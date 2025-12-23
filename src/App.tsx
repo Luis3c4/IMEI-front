@@ -7,10 +7,10 @@ import {
   AlertCircle,
   ExternalLink,
   Sheet,
+  DollarSign,
 } from "lucide-react";
 
-// ⚠️ CONFIGURAR ESTAS VARIABLES
-const API_KEY = "i10dJCd36NuUJPn0IXDtppP6pJ4QxceotdojqF957uAJ6LB6ElCCs8ebX0mm";
+// CONFIGURAR ESTAS VARIABLES
 const API_BASE = "http://localhost:5000"; // Cambiar a tu URL de Render en producción
 
 // Interfaces para tipado
@@ -22,34 +22,34 @@ interface Stats {
 }
 
 interface DeviceInfo {
-  Model?: string;
-  "Serial Number"?: string;
-  IMEI?: string;
-  "IMEI 2"?: string;
-  IMEI2?: string;
-  "Warranty Status"?: string;
-  "Estimated Purchase Date"?: string;
-  Simlock?: string;
-  iCloud?: string;
-  FMI?: string;
-  Activated?: string;
-  Carrier?: string;
-  "Initial Carrier"?: string;
-  "Blacklist Status"?: string;
-}
-
-interface ApiResponse {
-  success: boolean;
-  data?: DeviceInfo;
-  message?: string;
-  sheet_updated?: boolean;
-  total_registros?: number;
+  Demo_Unit: string;
+  Estimated_Purchase_Date: string;
+  IMEI: string;
+  IMEI2: string;
+  Loaner_Device: string;
+  Locked_Carrier: string;
+  MEID: string;
+  Model_Description: string;
+  Purchase_Country: string;
+  Refurbished_Device: string;
+  Replaced_Device: string;
+  Replacement_Device: string;
+  Serial_Number: string;
+  "Sim-Lock_Status": string;
+  Warranty_Status: string;
+  iCloud_Lock: string;
 }
 
 interface InfoCardProps {
   label: string;
   value: string | undefined;
   highlight?: "green" | "yellow" | "red";
+}
+
+interface Service {
+  service: string;
+  name: string;
+  price: string;
 }
 
 export default function IMEIChecker() {
@@ -66,16 +66,23 @@ export default function IMEIChecker() {
     sheet_existe: false,
     sheet_url: "",
   });
+  const [balance, setBalance] = useState<number | null>(null);
+  const [lastOrderInfo, setLastOrderInfo] = useState<{ precio: number; order_id: string } | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+
 
   useEffect(() => {
     cargarEstadisticas();
+    cargarBalance();
+    cargarServicios();
   }, []);
 
   const showToast = (message: string, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
-  };
-
+  };  
+  
   const cargarEstadisticas = async () => {
     try {
       const response = await fetch(`${API_BASE}/api/sheet-stats`);
@@ -85,6 +92,39 @@ export default function IMEIChecker() {
       console.error("Error al cargar estadísticas:", err);
     }
   };
+  const cargarBalance = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/balance`,{
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBalance(data.balance);
+      }
+    } catch (err) {
+      console.error("Error al cargar balance:", err);
+    }
+  };
+  // Cargar servicios disponibles
+  const cargarServicios = async () => {
+    try {
+      setLoadingServices(true);
+      const response = await fetch(`${API_BASE}/api/services`,{
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setServices(data.services);
+      }
+    } catch (err) {
+      console.error("Error al cargar servicios:", err);
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
 
   const handleConsultar = async () => {
     if (!inputValue) {
@@ -95,32 +135,47 @@ export default function IMEIChecker() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setLastOrderInfo(null);
 
     try {
       const response = await fetch(`${API_BASE}/api/consultar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          api_key: API_KEY,
           service_id: serviceId,
           input_value: inputValue,
+          formato: "beta"
         }),
       });
 
-      const data: ApiResponse = await response.json();
+      const data = await response.json();
 
       if (data.success) {
-        setResult(data.data!);
+        setResult(data.data);
+        
+        // Guardar info de la orden
+        if (data.precio && data.order_id) {
+          setLastOrderInfo({
+            precio: data.precio,
+            order_id: data.order_id
+          });
+        }
+        
+        // Actualizar balance
+        if (data.balance_restante) {
+          setBalance(parseFloat(data.balance_restante));
+        }
+        
         cargarEstadisticas();
 
         if (data.sheet_updated) {
           showToast(
-            `✅ Guardado en Google Sheets - Total: ${data.total_registros} registros`,
+            `Guardado en Google Sheets - Total: ${data.total_registros} registros`,
             "success"
           );
         } else {
           showToast(
-            "⚠️ Consulta exitosa pero no se pudo guardar en Sheets",
+            "Consulta exitosa pero no se pudo guardar en Sheets",
             "warning"
           );
         }
@@ -128,28 +183,26 @@ export default function IMEIChecker() {
         setInputValue("");
       } else {
         setError(data.message || "Error en la consulta");
-        showToast(`❌ ${data.message}`, "error");
+        showToast(` ${data.message}`, "error");
       }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
-        showToast(`❌ ${err.message}`, "error");
+        showToast(` ${err.message}`, 'error');
       } else {
-        setError("Error desconocido");
-        showToast("❌ Error desconocido", "error");
-      }
+        setError('Error desconocido');
+        showToast(' Error desconocido', 'error');
+      } 
     } finally {
       setLoading(false);
     }
   };
-
-  const handleAbrirSheet = () => {
+    const handleAbrirSheet = () => {
     if (stats.sheet_url) {
       window.open(stats.sheet_url, "_blank");
       showToast("📊 Abriendo Google Sheet...", "success");
     }
   };
-
   const handleNuevaConsulta = () => {
     setInputValue("");
     setResult(null);
@@ -158,10 +211,10 @@ export default function IMEIChecker() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-green-50 via-white to-blue-50">
-      {/* Toast */}
+      {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-in slide-in-from-top duration-300 ${
+          className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 ${
             toast.type === "success"
               ? "bg-green-500 text-white"
               : toast.type === "warning"
@@ -187,10 +240,35 @@ export default function IMEIChecker() {
             📱 Consultor IMEI/Serial iPhone
           </h1>
           <p className="text-gray-600">
-            Consulta información de dispositivos Apple - Historial en Google
-            Sheets
+            Consulta información de dispositivos Apple con DHRU Fusion API
           </p>
         </div>
+
+        {/* Balance Bar */}
+        {balance !== null && (
+          <div className="bg-linear-to-r from-green-600 to-blue-600 text-white rounded-lg shadow-lg p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <DollarSign size={32} />
+                <div>
+                  <p className="text-sm font-medium opacity-90">
+                    Balance DHRU Fusion
+                  </p>
+                  <p className="text-2xl font-bold">${balance.toFixed(2)}</p>
+                </div>
+              </div>
+              {lastOrderInfo && (
+                <div className="text-right">
+                  <p className="text-xs opacity-75">Última consulta</p>
+                  <p className="font-semibold">-${lastOrderInfo.precio}</p>
+                  <p className="text-xs opacity-75">
+                    Order #{lastOrderInfo.order_id}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Google Sheets Stats Bar */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border-l-4 border-green-500">
@@ -229,8 +307,9 @@ export default function IMEIChecker() {
           </div>
         </div>
 
+        {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Columna Izquierda */}
+          {/* Columna Izquierda - Formulario */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-md p-6 sticky top-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -238,22 +317,37 @@ export default function IMEIChecker() {
               </h2>
 
               <div className="space-y-4">
+                {/* Select de Servicios */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Servicio
+                    Servicio DHRU
                   </label>
                   <select
                     value={serviceId}
                     onChange={(e) => setServiceId(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    disabled={loadingServices}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm"
                   >
-                    <option value="17">Apple Carrier Check ($0.13)</option>
-                    <option value="50">Apple Advanced Check ($0.24)</option>
-                    <option value="3">Apple Basic Check ($0.11)</option>
-                    <option value="16">Apple SIM-lock Status ($0.10)</option>
+                    {loadingServices ? (
+                      <option>Cargando servicios...</option>
+                    ) : services.length > 0 ? (
+                      services.map((svc) => (
+                        <option key={svc.service} value={svc.service}>
+                          {svc.name} (${svc.price})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="0">APPLE SOLD BY & COVERAGE ($3.00)</option>
+                        <option value="1">SAMSUNG INFO - PRO ($0.07)</option>
+                        <option value="3">iCLOUD ON/OFF ($0.01)</option>
+                        <option value="30">APPLE GSX REPORT ($0.05)</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
+                {/* Input IMEI/Serial */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Serial Number o IMEI
@@ -265,11 +359,12 @@ export default function IMEIChecker() {
                       setInputValue(e.target.value.toUpperCase())
                     }
                     onKeyPress={(e) => e.key === "Enter" && handleConsultar()}
-                    placeholder="Ej: FFWZNVKSKXK1"
+                    placeholder="Ej: MC7M6JRDQ7"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg font-mono"
                   />
                 </div>
 
+                {/* Botón Consultar */}
                 <button
                   onClick={handleConsultar}
                   disabled={loading || !inputValue}
@@ -288,6 +383,7 @@ export default function IMEIChecker() {
                   )}
                 </button>
 
+                {/* Botón Nueva Consulta */}
                 {result && (
                   <button
                     onClick={handleNuevaConsulta}
@@ -298,7 +394,7 @@ export default function IMEIChecker() {
                 )}
               </div>
 
-              {/* Info */}
+              {/* Info Cards */}
               <div className="mt-6 space-y-2">
                 <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                   <div className="flex items-start gap-2">
@@ -311,30 +407,28 @@ export default function IMEIChecker() {
                         Guardado automático en Google Sheets
                       </p>
                       <p className="text-xs text-green-700 mt-1">
-                        Accede desde cualquier dispositivo con tu cuenta de
-                        Google
+                        Historial completo con 21 campos de información
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-xs text-blue-800">
-                    💡 El Sheet se actualiza en tiempo real. No necesitas
-                    descargar nada.
+                    💡 Powered by DHRU Fusion API - Datos en tiempo real
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Columna Derecha */}
+          {/* Columna Derecha - Resultados */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-md p-6 min-h-150">
               <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 📊 Resultados
               </h2>
 
-              {/* Estado vacío */}
+              {/* Estado Vacío */}
               {!loading && !result && !error && (
                 <div className="flex flex-col items-center justify-center h-96 text-gray-400">
                   <Search size={64} className="mb-4 opacity-50" />
@@ -359,7 +453,7 @@ export default function IMEIChecker() {
                 </div>
               )}
 
-              {/* Loading */}
+              {/* Estado Loading */}
               {loading && (
                 <div className="flex flex-col items-center justify-center h-96">
                   <Loader2
@@ -367,7 +461,7 @@ export default function IMEIChecker() {
                     size={48}
                   />
                   <p className="text-lg font-medium text-gray-700">
-                    Consultando dispositivo...
+                    Consultando en DHRU Fusion...
                   </p>
                   <p className="text-sm text-gray-500 mt-2">
                     Esto puede tardar 20-30 segundos
@@ -381,7 +475,7 @@ export default function IMEIChecker() {
                 </div>
               )}
 
-              {/* Error */}
+              {/* Estado Error */}
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
                   <AlertCircle className="text-red-600 shrink-0" size={24} />
@@ -394,17 +488,22 @@ export default function IMEIChecker() {
                 </div>
               )}
 
-              {/* Resultado */}
+              {/* Resultado Exitoso */}
               {result && (
-                <div className="space-y-6 animate-in fade-in duration-500">
-                  {/* Header */}
+                <div className="space-y-6">
+                  {/* Header del Resultado */}
                   <div className="bg-linear-to-r from-green-600 to-blue-600 text-white p-6 rounded-lg">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="text-2xl font-bold mb-2">
-                          {result.Model || "Información del Dispositivo"}
+                          {result.Model_Description ||
+                            "Información del Dispositivo"}
                         </h3>
-                        <p className="text-green-100">
+                        <p className="text-green-100 text-sm">
+                          {result.Purchase_Country &&
+                            `Comprado en: ${result.Purchase_Country}`}
+                        </p>
+                        <p className="text-green-100 text-xs mt-1">
                           {new Date().toLocaleDateString("es-ES", {
                             year: "numeric",
                             month: "long",
@@ -421,52 +520,63 @@ export default function IMEIChecker() {
                     </div>
                   </div>
 
-                  {/* Grid */}
+                  {/* Grid de Información */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <InfoCard
                       label="Serial Number"
-                      value={result["Serial Number"]}
+                      value={result.Serial_Number}
                     />
                     <InfoCard label="IMEI" value={result.IMEI} />
-                    <InfoCard
-                      label="IMEI2"
-                      value={result["IMEI 2"] || result.IMEI2 || "N/A"}
-                    />
+                    <InfoCard label="IMEI2" value={result.IMEI2 || "N/A"} />
+                    <InfoCard label="MEID" value={result.MEID} />
                     <InfoCard
                       label="Warranty Status"
-                      value={result["Warranty Status"]}
+                      value={result.Warranty_Status}
                     />
                     <InfoCard
                       label="Purchase Date"
-                      value={result["Estimated Purchase Date"]}
+                      value={result.Estimated_Purchase_Date}
                     />
                     <InfoCard
-                      label="Simlock"
-                      value={result.Simlock}
+                      label="Sim-Lock Status"
+                      value={result["Sim-Lock_Status"]}
                       highlight={
-                        result.Simlock === "UNLOCKED" ? "green" : "yellow"
+                        result["Sim-Lock_Status"] === "Unlocked"
+                          ? "green"
+                          : "red"
                       }
                     />
                     <InfoCard
-                      label="iCloud Status"
-                      value={result.iCloud}
-                      highlight={result.iCloud === "Clean" ? "green" : "red"}
+                      label="Locked Carrier"
+                      value={result.Locked_Carrier}
                     />
-                    <InfoCard label="FMI" value={result.FMI} />
-                    <InfoCard label="Activated" value={result.Activated} />
                     <InfoCard
-                      label="Carrier"
-                      value={
-                        result.Carrier || result["Initial Carrier"] || "N/A"
+                      label="iCloud Lock"
+                      value={result.iCloud_Lock}
+                      highlight={
+                        result.iCloud_Lock === "OFF" ? "green" : "red"
                       }
                     />
+                    <InfoCard label="Demo Unit" value={result.Demo_Unit} />
                     <InfoCard
-                      label="Blacklist"
-                      value={result["Blacklist Status"] || "N/A"}
+                      label="Loaner Device"
+                      value={result.Loaner_Device}
+                    />
+                    <InfoCard
+                      label="Refurbished"
+                      value={result.Refurbished_Device}
+                    />
+                    <InfoCard
+                      label="Replaced Device"
+                      value={result.Replaced_Device}
+                    />
+                    <InfoCard
+                      label="Replacement Device"
+                      value={result.Replacement_Device}
                     />
                   </div>
 
-                  {/* Actions */}
+                  {/* Botones de Acción */}
                   <div className="pt-4 border-t flex gap-3">
                     <button
                       onClick={handleAbrirSheet}
