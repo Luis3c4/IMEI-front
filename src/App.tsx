@@ -407,22 +407,33 @@ export default function IMEIChecker() {
                   )}
                 </button>
                 {scannerOpen && (
-                  <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
-                    <div className="bg-white rounded-xl p-4 w-full max-w-sm mx-4">
-                      <h3 className="text-lg font-semibold text-center mb-2">
-                        📷 Escanear código
-                      </h3>
+                  <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-end sm:items-center justify-center">
+                    <div className="bg-white rounded-t-3xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-sm mx-4 sm:mx-0 max-h-[90vh] sm:max-h-[95vh] overflow-y-auto">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-center flex-1">
+                          📷 Escanear código
+                        </h3>
+                        <button
+                          onClick={() => setScannerOpen(false)}
+                          className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-lg"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
 
                       <Scanner
                         onScan={(value) => {
                           setInputValue(value.toUpperCase());
+                          setScannerOpen(false);
                         }}
                         onClose={() => setScannerOpen(false)}
                       />
 
                       <button
                         onClick={() => setScannerOpen(false)}
-                        className="mt-4 w-full bg-red-500 text-white py-2 rounded-lg font-semibold"
+                        className="mt-4 w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition"
                       >
                         Cancelar
                       </button>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, ZoomIn, ZoomOut, Maximize2, Video, AlertCircle } from "lucide-react";
 import jsQR from "jsqr";
+import Quagga from "@ericblade/quagga2";
 
 interface ScannerProps {
   onScan: (value: string) => void;
@@ -30,6 +31,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
   const [lastScannedCode, setLastScannedCode] = useState("");
   const [error, setError] = useState<string>("");
   const [isHttps, setIsHttps] = useState(true);
+  const [scanMode, setScanMode] = useState<'qr' | 'barcode'>('barcode');
 
   // Verificar HTTPS
   useEffect(() => {
@@ -216,6 +218,14 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
   const stopCamera = () => {
     setIsScanning(false);
 
+    if (scanMode === 'barcode') {
+      try {
+        Quagga.stop();
+      } catch (err) {
+        console.error('Error deteniendo Quagga:', err);
+      }
+    }
+
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
@@ -234,6 +244,14 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       clearInterval(scanIntervalRef.current);
     }
 
+    if (scanMode === 'barcode') {
+      startBarcodeScanning();
+    } else {
+      startQRScanning();
+    }
+  };
+
+  const startQRScanning = () => {
     scanIntervalRef.current = window.setInterval(() => {
       if (!videoRef.current || !canvasRef.current || !isScanning) return;
 
@@ -259,7 +277,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       });
 
       if (code && code.data && code.data !== lastScannedCode) {
-        console.log("✅ Código detectado:", code.data);
+        console.log("✅ Código QR detectado:", code.data);
         setLastScannedCode(code.data);
         setIsScanning(false);
         stopCamera();
@@ -267,6 +285,64 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
         onClose();
       }
     }, 100);
+  };
+
+  const startBarcodeScanning = () => {
+    try {
+      Quagga.init(
+        {
+          inputStream: {
+            type: "LiveStream",
+            target: videoRef.current as any,
+            constraints: {
+              width: { min: 320, ideal: 1280 },
+              height: { min: 240, ideal: 720 },
+              facingMode: "environment",
+              deviceId: selectedCamera ? { ideal: selectedCamera } : undefined,
+            },
+          },
+          decoder: {
+            readers: [
+              "code_128_reader",
+              "ean_reader",
+              "ean_8_reader",
+              "code_39_reader",
+              "code_93_reader",
+              "upc_reader",
+              "upc_e_reader",
+            ],
+          },
+          frequency: 10,
+          multiple: false,
+        } as any,
+        (err: any) => {
+          if (err) {
+            console.error("Error inicializando Quagga:", err);
+            setError("❌ Error al inicializar escáner de códigos de barras");
+            return;
+          }
+          Quagga.start();
+
+          Quagga.onDetected((result: any) => {
+            if (result.codeResult && result.codeResult.code) {
+              const barcode = result.codeResult.code;
+              if (barcode !== lastScannedCode) {
+                console.log("✅ Código de barras detectado:", barcode);
+                setLastScannedCode(barcode);
+                setIsScanning(false);
+                Quagga.stop();
+                stopCamera();
+                onScan(barcode);
+                onClose();
+              }
+            }
+          });
+        }
+      );
+    } catch (error: any) {
+      console.error("Error en scanning de código de barras:", error);
+      setError(`❌ Error: ${error.message}`);
+    }
   };
 
   const applyZoom = async (newZoom: number) => {
@@ -321,6 +397,30 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
 
   return (
     <div className="space-y-4">
+      {/* Selector de Modo de Escaneo */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setScanMode('barcode')}
+          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
+            scanMode === 'barcode'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          📊 Código de Barras
+        </button>
+        <button
+          onClick={() => setScanMode('qr')}
+          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
+            scanMode === 'qr'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          📱 Código QR
+        </button>
+      </div>
+
       {/* Mensaje de Error */}
       {error && (
         <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3">
@@ -328,14 +428,6 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
             <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-medium text-red-800">{error}</p>
-              {!isHttps && (
-                <button
-                  onClick={() => window.location.href = window.location.href.replace('http:', 'https:')}
-                  className="mt-2 text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                >
-                  Intentar con HTTPS
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -358,17 +450,14 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
               </option>
             ))}
           </select>
-          <p className="text-xs text-gray-500 mt-1">
-            💡 Prueba diferentes cámaras si no funciona la primera
-          </p>
         </div>
       )}
 
       {/* Vista de Video */}
-      <div className="relative bg-black rounded-lg overflow-hidden">
+      <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
         <video
           ref={videoRef}
-          className="w-full h-auto"
+          className="w-full h-full object-cover"
           playsInline
           muted
           autoPlay
@@ -380,7 +469,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div
               className="border-4 border-green-400 rounded-lg"
-              style={{ width: "80%", height: "200px" }}
+              style={{ width: "85%", height: "60%" }}
             >
               <div className="w-full h-full border-2 border-dashed border-green-300 animate-pulse"></div>
             </div>
@@ -391,7 +480,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
         {isScanning && (
           <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2">
             <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-            Escaneando...
+            {scanMode === 'barcode' ? 'Leyendo código...' : 'Escaneando QR...'}
           </div>
         )}
 
