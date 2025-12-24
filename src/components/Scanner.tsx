@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, X, ZoomIn, ZoomOut, Maximize2, Video } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, Video } from "lucide-react";
 import jsQR from "jsqr";
 
 interface ScannerProps {
