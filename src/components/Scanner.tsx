@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, ZoomIn, ZoomOut, Maximize2, Video, AlertCircle } from "lucide-react";
-import jsQR from "jsqr";
 import Quagga from "@ericblade/quagga2";
 
 interface ScannerProps {
@@ -31,7 +30,6 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
   const [lastScannedCode, setLastScannedCode] = useState("");
   const [error, setError] = useState<string>("");
   const [isHttps, setIsHttps] = useState(true);
-  const [scanMode, setScanMode] = useState<'qr' | 'barcode'>('barcode');
 
   // Verificar HTTPS
   useEffect(() => {
@@ -79,25 +77,29 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       ) as CameraDevice[];
 
       console.log("Cámaras disponibles:", videoDevices);
-      setCameras(videoDevices);
 
-      if (videoDevices.length === 0) {
-        setError('No se encontraron cámaras disponibles');
+      // Filtrar SOLO cámaras traseras (remover frontal)
+      const backCameras = videoDevices.filter(cam => {
+        const label = cam.label.toLowerCase();
+        return (
+          label.includes("back") ||
+          label.includes("rear") ||
+          label.includes("trasera") ||
+          label.includes("environment") ||
+          label.includes("main")
+        ) && !label.includes("front") && !label.includes("user") && !label.includes("frontal");
+      });
+
+      console.log("Cámaras traseras filtradas:", backCameras);
+      setCameras(backCameras);
+
+      if (backCameras.length === 0) {
+        setError('❌ No se encontraron cámaras traseras. Solo se soportan cámaras traseras.');
         return;
       }
 
-      // Buscar cámara trasera
-      const backCamera = videoDevices.find(
-        (cam) =>
-          cam.label.toLowerCase().includes("back") ||
-          cam.label.toLowerCase().includes("rear") ||
-          cam.label.toLowerCase().includes("trasera") ||
-          cam.label.toLowerCase().includes("environment")
-      );
-
-      // Si no encuentra trasera por label, usar la última (generalmente es trasera)
-      const defaultCamera = backCamera || videoDevices[videoDevices.length - 1];
-
+      // Usar la primera cámara trasera
+      const defaultCamera = backCameras[0];
       if (defaultCamera) {
         setSelectedCamera(defaultCamera.deviceId);
       }
@@ -119,14 +121,17 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
     try {
       setError('');
       stopCamera();
+      
+      // Pequeño delay para asegurar que todo se limpia
+      await new Promise(resolve => setTimeout(resolve, 200));
 
-      // Configuración más flexible para móviles
+      // Configuración flexible para móviles
       const constraints: MediaStreamConstraints = {
         video: {
           deviceId: deviceId ? { ideal: deviceId } : undefined,
-          facingMode: { ideal: 'environment' }, // Esto ayuda a forzar cámara trasera
-          width: { ideal: 1920, max: 1920 },
-          height: { ideal: 1080, max: 1080 },
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
         audio: false
       };
@@ -157,11 +162,6 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
         console.log("Capacidades de la cámara:", capabilities);
         console.log("Configuración actual:", settings);
 
-        // Verificar que sea la cámara trasera
-        if (settings.facingMode === 'user') {
-          console.warn('⚠️ Se abrió la cámara frontal en lugar de la trasera');
-        }
-
         // Configurar zoom
         if (capabilities.zoom) {
           setZoomSupported(true);
@@ -182,12 +182,11 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       if (error.name === 'NotAllowedError') {
         setError('❌ Permisos denegados. Permite el acceso a la cámara en la configuración.');
       } else if (error.name === 'NotFoundError') {
-        setError('❌ Cámara no encontrada. Verifica que tu dispositivo tenga cámara.');
+        setError('❌ Cámara no encontrada. Verifica que tu dispositivo tenga cámara trasera.');
       } else if (error.name === 'NotReadableError') {
-        setError('❌ La cámara está en uso por otra aplicación. Cierra otras apps que usen la cámara.');
+        setError('❌ La cámara está en uso. Cierra otras apps que usen la cámara y reintenta cambiar de cámara.');
       } else if (error.name === 'OverconstrainedError') {
-        setError('❌ No se pudo aplicar la configuración solicitada. Intentando con configuración básica...');
-        // Intentar con configuración mínima
+        setError('❌ No se pudo aplicar la configuración. Reintentando con configuración básica...');
         tryBasicCamera();
       } else {
         setError(`❌ Error: ${error.message}`);
@@ -218,25 +217,27 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
   const stopCamera = () => {
     setIsScanning(false);
 
-    if (scanMode === 'barcode') {
-      try {
-        Quagga.stop();
-      } catch (err) {
-        console.error('Error deteniendo Quagga:', err);
-      }
-    }
-
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
     }
 
+    // Detener streams de cámara
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current.getTracks().forEach((track) => {
+        track.stop();
+      });
       streamRef.current = null;
     }
 
     videoTrackRef.current = null;
+
+    // Detener Quagga después de detener streams
+    try {
+      Quagga.stop();
+    } catch (err) {
+      // Ignorar errores si Quagga no está iniciado
+    }
   };
 
   const startScanning = () => {
@@ -244,101 +245,71 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       clearInterval(scanIntervalRef.current);
     }
 
-    if (scanMode === 'barcode') {
-      startBarcodeScanning();
-    } else {
-      startQRScanning();
-    }
-  };
-
-  const startQRScanning = () => {
-    scanIntervalRef.current = window.setInterval(() => {
-      if (!videoRef.current || !canvasRef.current || !isScanning) return;
-
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const context = canvas.getContext("2d");
-
-      if (!context || video.readyState !== video.HAVE_ENOUGH_DATA) return;
-
-      // Ajustar canvas al tamaño del video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      // Dibujar frame actual
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // Obtener datos de imagen
-      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-
-      // Intentar detectar código
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert",
-      });
-
-      if (code && code.data && code.data !== lastScannedCode) {
-        console.log("✅ Código QR detectado:", code.data);
-        setLastScannedCode(code.data);
-        setIsScanning(false);
-        stopCamera();
-        onScan(code.data);
-        onClose();
-      }
-    }, 100);
+    startBarcodeScanning();
   };
 
   const startBarcodeScanning = () => {
     try {
-      Quagga.init(
-        {
-          inputStream: {
-            type: "LiveStream",
-            target: videoRef.current as any,
-            constraints: {
-              width: { min: 320, ideal: 1280 },
-              height: { min: 240, ideal: 720 },
-              facingMode: "environment",
-              deviceId: selectedCamera ? { ideal: selectedCamera } : undefined,
-            },
-          },
-          decoder: {
-            readers: [
-              "code_128_reader",
-              "ean_reader",
-              "ean_8_reader",
-              "code_39_reader",
-              "code_93_reader",
-              "upc_reader",
-              "upc_e_reader",
-            ],
-          },
-          frequency: 10,
-          multiple: false,
-        } as any,
-        (err: any) => {
-          if (err) {
-            console.error("Error inicializando Quagga:", err);
-            setError("❌ Error al inicializar escáner de códigos de barras");
-            return;
-          }
-          Quagga.start();
+      // Detener Quagga si está corriendo
+      try {
+        Quagga.stop();
+      } catch (e) {
+        // Ignorar si no está iniciado
+      }
 
-          Quagga.onDetected((result: any) => {
-            if (result.codeResult && result.codeResult.code) {
-              const barcode = result.codeResult.code;
-              if (barcode !== lastScannedCode) {
-                console.log("✅ Código de barras detectado:", barcode);
-                setLastScannedCode(barcode);
-                setIsScanning(false);
-                Quagga.stop();
-                stopCamera();
-                onScan(barcode);
-                onClose();
-              }
+      // Pequeño delay para asegurar que Quagga se detiene completamente
+      setTimeout(() => {
+        Quagga.init(
+          {
+            inputStream: {
+              type: "LiveStream",
+              target: videoRef.current as any,
+              constraints: {
+                width: { min: 320, ideal: 1280 },
+                height: { min: 240, ideal: 720 },
+                facingMode: "environment",
+                deviceId: selectedCamera ? { ideal: selectedCamera } : undefined,
+              },
+            },
+            decoder: {
+              readers: [
+                "code_128_reader",
+                "ean_reader",
+                "ean_8_reader",
+                "code_39_reader",
+                "code_93_reader",
+                "upc_reader",
+                "upc_e_reader",
+              ],
+            },
+            frequency: 10,
+            multiple: false,
+          } as any,
+          (err: any) => {
+            if (err) {
+              console.error("Error inicializando Quagga:", err);
+              setError("❌ Error al inicializar escáner de códigos de barras. Intenta con otra cámara.");
+              return;
             }
-          });
-        }
-      );
+            Quagga.start();
+
+            Quagga.onDetected((result: any) => {
+              if (result.codeResult && result.codeResult.code) {
+                const barcode = result.codeResult.code;
+                if (barcode !== lastScannedCode) {
+                  console.log("✅ Código de barras detectado:", barcode);
+                  setLastScannedCode(barcode);
+                  setIsScanning(false);
+                  Quagga.stop();
+                  stopCamera();
+                  onScan(barcode);
+                  onClose();
+                }
+              }
+            });
+          }
+        );
+      }, 100);
     } catch (error: any) {
       console.error("Error en scanning de código de barras:", error);
       setError(`❌ Error: ${error.message}`);
@@ -397,30 +368,6 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
 
   return (
     <div className="space-y-4">
-      {/* Selector de Modo de Escaneo */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setScanMode('barcode')}
-          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
-            scanMode === 'barcode'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          📊 Código de Barras
-        </button>
-        <button
-          onClick={() => setScanMode('qr')}
-          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition ${
-            scanMode === 'qr'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          📱 Código QR
-        </button>
-      </div>
-
       {/* Mensaje de Error */}
       {error && (
         <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3">
@@ -480,7 +427,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
         {isScanning && (
           <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2">
             <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-            {scanMode === 'barcode' ? 'Leyendo código...' : 'Escaneando QR...'}
+            Leyendo código de barras...
           </div>
         )}
 
