@@ -5,8 +5,10 @@ interface ScannerProps {
   onScan: (value: string) => void;
   onClose: () => void;
 }
+
 export default function Scanner({ onScan, onClose }: ScannerProps) {
-  const isScanningRef = useRef(false);
+  const hasScannedRef = useRef(false);
+  const isRunningRef = useRef(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
@@ -19,22 +21,22 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 350, height: 100 } },
           async (decodedText) => {
-            if (!isScanningRef.current) return;
-
-            isScanningRef.current = false;
+            if (hasScannedRef.current) return;
+            hasScannedRef.current = true;
             console.log("IMEI detectado:", decodedText);
 
-            try {
-              await scanner.stop();
-            } catch (err) {
-              console.warn("Scanner ya estaba detenido", err);
+            if (isRunningRef.current) {
+              isRunningRef.current = false;
+              await scanner.stop().catch(() => {});
             }
+
+            onScan(decodedText);
+            onClose();
           },
-          (errorMessage) => {
-            console.debug(errorMessage);
-          }
+          () => {}
         );
-        isScanningRef.current = true;
+
+        isRunningRef.current = true;
       } catch (err) {
         console.error("Error iniciando scanner", err);
       }
@@ -43,10 +45,9 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
     startScanner();
 
     return () => {
-      if (scannerRef.current && isScanningRef.current) {
-        scannerRef.current
-          .stop()
-          .catch(() => console.warn("Scanner ya detenido"));
+      if (scannerRef.current && isRunningRef.current) {
+        isRunningRef.current = false;
+        scannerRef.current.stop().catch(() => {});
       }
     };
   }, [onScan, onClose]);
