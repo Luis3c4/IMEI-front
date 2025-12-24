@@ -13,7 +13,7 @@ interface CameraDevice {
   kind: string;
 }
 
-export default function Scanner({ onScan }: ScannerProps) {
+export default function Scanner({ onScan, onClose }: ScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -264,6 +264,7 @@ export default function Scanner({ onScan }: ScannerProps) {
         setIsScanning(false);
         stopCamera();
         onScan(code.data);
+        onClose();
       }
     }, 100);
   };
@@ -480,19 +481,6 @@ export default function Scanner({ onScan }: ScannerProps) {
           </div>
         </div>
       )}
-
-      {/* Instrucciones */}
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-        <p className="text-sm text-green-800 font-medium text-center">
-          💡 Consejos para escanear:
-        </p>
-        <ul className="text-xs text-green-700 mt-2 space-y-1">
-          <li>• Mantén buena iluminación</li>
-          <li>• Posiciona el código dentro del recuadro verde</li>
-          <li>• Si no detecta, prueba cambiar de cámara</li>
-          <li>• Usa zoom máximo para códigos pequeños</li>
-        </ul>
-      </div>
     </div>
   );
 }
