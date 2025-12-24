@@ -9,6 +9,8 @@ import {
   Sheet,
   DollarSign,
 } from "lucide-react";
+import { ScanBarcode } from "lucide-react";
+import Scanner from "./components/Scanner";
 
 // CONFIGURAR ESTAS VARIABLES
 const API_BASE = "http://localhost:5000"; // Cambiar a tu URL de Render en producción
@@ -61,16 +63,20 @@ export default function IMEIChecker() {
   const [toast, setToast] = useState<{ message: string; type: string } | null>(
     null
   );
+  const [scannerOpen, setScannerOpen] = useState(false);
+
   const [stats, setStats] = useState<Stats>({
     total_consultas: 0,
     sheet_existe: false,
     sheet_url: "",
   });
   const [balance, setBalance] = useState<number | null>(null);
-  const [lastOrderInfo, setLastOrderInfo] = useState<{ precio: number; order_id: string } | null>(null);
+  const [lastOrderInfo, setLastOrderInfo] = useState<{
+    precio: number;
+    order_id: string;
+  } | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
-
 
   useEffect(() => {
     cargarEstadisticas();
@@ -81,8 +87,8 @@ export default function IMEIChecker() {
   const showToast = (message: string, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
-  };  
-  
+  };
+
   const cargarEstadisticas = async () => {
     try {
       const response = await fetch(`${API_BASE}/api/sheet-stats`);
@@ -94,7 +100,7 @@ export default function IMEIChecker() {
   };
   const cargarBalance = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/balance`,{
+      const response = await fetch(`${API_BASE}/api/balance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -110,7 +116,7 @@ export default function IMEIChecker() {
   const cargarServicios = async () => {
     try {
       setLoadingServices(true);
-      const response = await fetch(`${API_BASE}/api/services`,{
+      const response = await fetch(`${API_BASE}/api/services`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -124,7 +130,6 @@ export default function IMEIChecker() {
       setLoadingServices(false);
     }
   };
-
 
   const handleConsultar = async () => {
     if (!inputValue) {
@@ -144,7 +149,7 @@ export default function IMEIChecker() {
         body: JSON.stringify({
           service_id: serviceId,
           input_value: inputValue,
-          formato: "beta"
+          formato: "beta",
         }),
       });
 
@@ -152,20 +157,20 @@ export default function IMEIChecker() {
 
       if (data.success) {
         setResult(data.data);
-        
+
         // Guardar info de la orden
         if (data.precio && data.order_id) {
           setLastOrderInfo({
             precio: data.precio,
-            order_id: data.order_id
+            order_id: data.order_id,
           });
         }
-        
+
         // Actualizar balance
         if (data.balance_restante) {
           setBalance(parseFloat(data.balance_restante));
         }
-        
+
         cargarEstadisticas();
 
         if (data.sheet_updated) {
@@ -188,16 +193,16 @@ export default function IMEIChecker() {
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
-        showToast(` ${err.message}`, 'error');
+        showToast(` ${err.message}`, "error");
       } else {
-        setError('Error desconocido');
-        showToast(' Error desconocido', 'error');
-      } 
+        setError("Error desconocido");
+        showToast(" Error desconocido", "error");
+      }
     } finally {
       setLoading(false);
     }
   };
-    const handleAbrirSheet = () => {
+  const handleAbrirSheet = () => {
     if (stats.sheet_url) {
       window.open(stats.sheet_url, "_blank");
       showToast("📊 Abriendo Google Sheet...", "success");
@@ -338,7 +343,9 @@ export default function IMEIChecker() {
                       ))
                     ) : (
                       <>
-                        <option value="0">APPLE SOLD BY & COVERAGE ($3.00)</option>
+                        <option value="0">
+                          APPLE SOLD BY & COVERAGE ($3.00)
+                        </option>
                         <option value="1">SAMSUNG INFO - PRO ($0.07)</option>
                         <option value="3">iCLOUD ON/OFF ($0.01)</option>
                         <option value="30">APPLE GSX REPORT ($0.05)</option>
@@ -382,7 +389,46 @@ export default function IMEIChecker() {
                     </>
                   )}
                 </button>
+                {/* Botón Camara */}
+                <button
+                  onClick={() => setScannerOpen(true)}
+                  className="w-full bg-linear-to-r from-green-600 to-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Consultando...
+                    </>
+                  ) : (
+                    <>
+                      <ScanBarcode size={20} />
+                      Scanner
+                    </>
+                  )}
+                </button>
+                {scannerOpen && (
+                  <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center">
+                    <div className="bg-white rounded-xl p-4 w-full max-w-sm mx-4">
+                      <h3 className="text-lg font-semibold text-center mb-2">
+                        📷 Escanear código
+                      </h3>
 
+                      <Scanner
+                        onScan={(value) => {
+                          setInputValue(value.toUpperCase());
+                        }}
+                        onClose={() => setScannerOpen(false)}
+                      />
+
+                      <button
+                        onClick={() => setScannerOpen(false)}
+                        className="mt-4 w-full bg-red-500 text-white py-2 rounded-lg font-semibold"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {/* Botón Nueva Consulta */}
                 {result && (
                   <button
@@ -553,9 +599,7 @@ export default function IMEIChecker() {
                     <InfoCard
                       label="iCloud Lock"
                       value={result.iCloud_Lock}
-                      highlight={
-                        result.iCloud_Lock === "OFF" ? "green" : "red"
-                      }
+                      highlight={result.iCloud_Lock === "OFF" ? "green" : "red"}
                     />
                     <InfoCard label="Demo Unit" value={result.Demo_Unit} />
                     <InfoCard
