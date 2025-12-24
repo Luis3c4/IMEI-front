@@ -296,14 +296,19 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
             Quagga.onDetected((result: any) => {
               if (result.codeResult && result.codeResult.code) {
                 const barcode = result.codeResult.code;
-                if (barcode !== lastScannedCode) {
-                  console.log("✅ Código de barras detectado:", barcode);
+                // Filtrar: Serial Number (S + alfanumérico) o IMEI (15 dígitos)
+                const isValidSerial = /^S[A-Z0-9]{8,}$/.test(barcode); // Serial que empieza con S
+                const isValidIMEI = /^\d{15}$/.test(barcode); // IMEI con exactamente 15 dígitos
+                if ((isValidSerial || isValidIMEI) && barcode !== lastScannedCode) {
+                  console.log("Código de barras detectado:", barcode, isValidSerial ? "(Serial Number)" : "(IMEI)");
                   setLastScannedCode(barcode);
                   setIsScanning(false);
                   Quagga.stop();
                   stopCamera();
                   onScan(barcode);
                   onClose();
+                } else if(barcode !== lastScannedCode) {
+                  console.log("Código detectado pero no válido:", barcode);
                 }
               }
             });
