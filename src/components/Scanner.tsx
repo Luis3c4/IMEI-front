@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ZoomIn, ZoomOut, Maximize2, Video } from "lucide-react";
+import { Camera, ZoomIn, ZoomOut, Maximize2, Video, AlertCircle } from "lucide-react";
 import jsQR from "jsqr";
 
 interface ScannerProps {
@@ -13,7 +13,7 @@ interface CameraDevice {
   kind: string;
 }
 
-export default function Scanner({ onScan, onClose }: ScannerProps) {
+export default function Scanner({ onScan }: ScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -28,15 +28,31 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
   const [minZoom, setMinZoom] = useState(1);
   const [zoomSupported, setZoomSupported] = useState(false);
   const [lastScannedCode, setLastScannedCode] = useState("");
+  const [error, setError] = useState<string>("");
+  const [isHttps, setIsHttps] = useState(true);
+
+  // Verificar HTTPS
+  useEffect(() => {
+    const isSecure = window.location.protocol === 'https:' || 
+                     window.location.hostname === 'localhost' ||
+                     window.location.hostname === '127.0.0.1';
+    setIsHttps(isSecure);
+    
+    if (!isSecure) {
+      setError('⚠️ Necesitas HTTPS para acceder a la cámara trasera. En desarrollo usa localhost.');
+    }
+  }, []);
 
   // Cargar cámaras disponibles
   useEffect(() => {
-    loadCameras();
-  }, []);
+    if (isHttps) {
+      loadCameras();
+    }
+  }, [isHttps]);
 
   // Iniciar escaneo cuando se selecciona una cámara
   useEffect(() => {
-    if (selectedCamera) {
+    if (selectedCamera && isHttps) {
       startCamera(selectedCamera);
     }
     return () => {
@@ -46,9 +62,15 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
 
   const loadCameras = async () => {
     try {
-      // Solicitar permisos primero
-      await navigator.mediaDevices.getUserMedia({ video: true });
+      // IMPORTANTE: Primero solicitar permisos básicos
+      const tempStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      
+      // Detener el stream temporal
+      tempStream.getTracks().forEach(track => track.stop());
 
+      // Ahora sí, enumerar dispositivos
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(
         (device) => device.kind === "videoinput"
@@ -57,54 +79,70 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       console.log("Cámaras disponibles:", videoDevices);
       setCameras(videoDevices);
 
-      // Intentar identificar y seleccionar la cámara 1x por defecto
-      const mainCamera = videoDevices.find(
+      if (videoDevices.length === 0) {
+        setError('No se encontraron cámaras disponibles');
+        return;
+      }
+
+      // Buscar cámara trasera
+      const backCamera = videoDevices.find(
         (cam) =>
           cam.label.toLowerCase().includes("back") ||
           cam.label.toLowerCase().includes("rear") ||
           cam.label.toLowerCase().includes("trasera") ||
-          cam.label.toLowerCase().includes("main")
+          cam.label.toLowerCase().includes("environment")
       );
 
-      // Si no encuentra, usar la primera que no sea frontal
-      const defaultCamera =
-        mainCamera ||
-        videoDevices.find(
-          (cam) =>
-            !cam.label.toLowerCase().includes("front") &&
-            !cam.label.toLowerCase().includes("frontal")
-        ) ||
-        videoDevices[0];
+      // Si no encuentra trasera por label, usar la última (generalmente es trasera)
+      const defaultCamera = backCamera || videoDevices[videoDevices.length - 1];
 
       if (defaultCamera) {
         setSelectedCamera(defaultCamera.deviceId);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al cargar cámaras:", error);
-      alert("No se pudo acceder a las cámaras. Verifica los permisos.");
+      if (error.name === 'NotAllowedError') {
+        setError('❌ Permisos de cámara denegados. Por favor, permite el acceso en la configuración del navegador.');
+      } else if (error.name === 'NotFoundError') {
+        setError('❌ No se encontró ninguna cámara en el dispositivo.');
+      } else if (error.name === 'NotReadableError') {
+        setError('❌ La cámara está siendo usada por otra aplicación.');
+      } else {
+        setError(`❌ Error al acceder a la cámara: ${error.message}`);
+      }
     }
   };
 
   const startCamera = async (deviceId: string) => {
     try {
-      // Detener cámara anterior si existe
+      setError('');
       stopCamera();
 
-      // Configuración para solicitar la mejor calidad
+      // Configuración más flexible para móviles
       const constraints: MediaStreamConstraints = {
         video: {
-          deviceId: { exact: deviceId },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          facingMode: "environment",
+          deviceId: deviceId ? { ideal: deviceId } : undefined,
+          facingMode: { ideal: 'environment' }, // Esto ayuda a forzar cámara trasera
+          width: { ideal: 1920, max: 1920 },
+          height: { ideal: 1080, max: 1080 },
         },
+        audio: false
       };
 
+      console.log('Intentando abrir cámara con:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        
+        // Esperar a que el video esté listo
+        await new Promise((resolve) => {
+          if (videoRef.current) {
+            videoRef.current.onloadedmetadata = resolve;
+          }
+        });
+        
         await videoRef.current.play();
 
         // Obtener capacidades de la cámara
@@ -117,12 +155,17 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
         console.log("Capacidades de la cámara:", capabilities);
         console.log("Configuración actual:", settings);
 
+        // Verificar que sea la cámara trasera
+        if (settings.facingMode === 'user') {
+          console.warn('⚠️ Se abrió la cámara frontal en lugar de la trasera');
+        }
+
         // Configurar zoom
         if (capabilities.zoom) {
           setZoomSupported(true);
-          setMinZoom(capabilities.zoom.min);
-          setMaxZoom(capabilities.zoom.max);
-          setZoomLevel(settings.zoom || capabilities.zoom.min);
+          setMinZoom(capabilities.zoom.min || 1);
+          setMaxZoom(capabilities.zoom.max || 1);
+          setZoomLevel(settings.zoom || capabilities.zoom.min || 1);
         } else {
           setZoomSupported(false);
         }
@@ -131,9 +174,42 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
         setIsScanning(true);
         startScanning();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al iniciar cámara:", error);
-      alert("Error al iniciar la cámara seleccionada.");
+      
+      if (error.name === 'NotAllowedError') {
+        setError('❌ Permisos denegados. Permite el acceso a la cámara en la configuración.');
+      } else if (error.name === 'NotFoundError') {
+        setError('❌ Cámara no encontrada. Verifica que tu dispositivo tenga cámara.');
+      } else if (error.name === 'NotReadableError') {
+        setError('❌ La cámara está en uso por otra aplicación. Cierra otras apps que usen la cámara.');
+      } else if (error.name === 'OverconstrainedError') {
+        setError('❌ No se pudo aplicar la configuración solicitada. Intentando con configuración básica...');
+        // Intentar con configuración mínima
+        tryBasicCamera();
+      } else {
+        setError(`❌ Error: ${error.message}`);
+      }
+    }
+  };
+
+  // Fallback con configuración mínima
+  const tryBasicCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setIsScanning(true);
+        startScanning();
+        setError('');
+      }
+    } catch (err) {
+      console.error('Falló también la configuración básica:', err);
     }
   };
 
@@ -183,14 +259,13 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       });
 
       if (code && code.data && code.data !== lastScannedCode) {
-        console.log("Código detectado:", code.data);
+        console.log("✅ Código detectado:", code.data);
         setLastScannedCode(code.data);
         setIsScanning(false);
         stopCamera();
         onScan(code.data);
-        onClose();
       }
-    }, 100); // Escanear cada 100ms
+    }, 100);
   };
 
   const applyZoom = async (newZoom: number) => {
@@ -210,12 +285,12 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
   };
 
   const handleZoomIn = () => {
-    const increment = (maxZoom - minZoom) / 10;
+    const increment = Math.max(0.1, (maxZoom - minZoom) / 10);
     applyZoom(zoomLevel + increment);
   };
 
   const handleZoomOut = () => {
-    const decrement = (maxZoom - minZoom) / 10;
+    const decrement = Math.max(0.1, (maxZoom - minZoom) / 10);
     applyZoom(zoomLevel - decrement);
   };
 
@@ -228,24 +303,43 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
   };
 
   const getCameraLabel = (label: string) => {
-    // Simplificar etiquetas de cámaras
     if (label.toLowerCase().includes("ultra") || label.includes("0.5")) {
       return "📐 Ultra Wide (0.5x)";
     }
-    if (label.toLowerCase().includes("tele") || label.includes("2x")) {
+    if (label.toLowerCase().includes("tele") || label.includes("2x") || label.includes("telephoto")) {
       return "🔭 Telephoto (2x)";
     }
-    if (label.toLowerCase().includes("back") || label.toLowerCase().includes("rear")) {
+    if (label.toLowerCase().includes("back") || label.toLowerCase().includes("rear") || label.toLowerCase().includes("environment")) {
       return "📷 Principal (1x)";
     }
-    if (label.toLowerCase().includes("front")) {
+    if (label.toLowerCase().includes("front") || label.toLowerCase().includes("user")) {
       return "🤳 Frontal";
     }
-    return `📹 ${label.substring(0, 30)}`;
+    return `📹 Cámara ${label.substring(0, 20)}`;
   };
 
   return (
     <div className="space-y-4">
+      {/* Mensaje de Error */}
+      {error && (
+        <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800">{error}</p>
+              {!isHttps && (
+                <button
+                  onClick={() => window.location.href = window.location.href.replace('http:', 'https:')}
+                  className="mt-2 text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                >
+                  Intentar con HTTPS
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Selector de Cámara */}
       {cameras.length > 1 && (
         <div>
@@ -264,7 +358,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
             ))}
           </select>
           <p className="text-xs text-gray-500 mt-1">
-            💡 Para códigos pequeños, selecciona la cámara 2x (Telephoto)
+            💡 Prueba diferentes cámaras si no funciona la primera
           </p>
         </div>
       )}
@@ -299,10 +393,19 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
             Escaneando...
           </div>
         )}
+
+        {!isScanning && !error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75">
+            <div className="text-center text-white">
+              <Camera className="w-12 h-12 mx-auto mb-2 animate-pulse" />
+              <p className="text-sm">Iniciando cámara...</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Información de la cámara actual */}
-      {selectedCamera && (
+      {selectedCamera && isScanning && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <div className="flex items-center gap-2 text-sm text-blue-800">
             <Video className="w-4 h-4" />
@@ -316,7 +419,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       )}
 
       {/* Controles de Zoom */}
-      {zoomSupported ? (
+      {zoomSupported && isScanning && (
         <div className="bg-gray-50 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">
@@ -332,7 +435,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
             type="range"
             min={minZoom}
             max={maxZoom}
-            step={(maxZoom - minZoom) / 100}
+            step={0.1}
             value={zoomLevel}
             onChange={(e) => applyZoom(parseFloat(e.target.value))}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
@@ -376,29 +479,18 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
             </button>
           </div>
         </div>
-      ) : (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
-          <p className="text-sm text-yellow-800">
-            ℹ️ Esta cámara no soporta zoom digital
-          </p>
-          <p className="text-xs text-yellow-700 mt-1">
-            {cameras.length > 1
-              ? "Prueba seleccionando la cámara Telephoto (2x)"
-              : "Acerca físicamente el dispositivo al código"}
-          </p>
-        </div>
       )}
 
       {/* Instrucciones */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
         <p className="text-sm text-green-800 font-medium text-center">
-          💡 Consejos para códigos pequeños:
+          💡 Consejos para escanear:
         </p>
         <ul className="text-xs text-green-700 mt-2 space-y-1">
-          <li>• Si tienes múltiples cámaras, usa la 2x (Telephoto)</li>
-          <li>• Buena iluminación es esencial</li>
-          <li>• Mantén el código perpendicular a la cámara</li>
-          <li>• Si no detecta, prueba con zoom máximo</li>
+          <li>• Mantén buena iluminación</li>
+          <li>• Posiciona el código dentro del recuadro verde</li>
+          <li>• Si no detecta, prueba cambiar de cámara</li>
+          <li>• Usa zoom máximo para códigos pequeños</li>
         </ul>
       </div>
     </div>
