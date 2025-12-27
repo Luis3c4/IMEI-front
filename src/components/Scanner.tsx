@@ -94,7 +94,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       setCameras(backCameras);
 
       if (backCameras.length === 0) {
-        setError('❌ No se encontraron cámaras traseras. Solo se soportan cámaras traseras.');
+        setError(' No se encontraron cámaras traseras. Solo se soportan cámaras traseras.');
         return;
       }
 
@@ -106,13 +106,13 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
     } catch (error: any) {
       console.error("Error al cargar cámaras:", error);
       if (error.name === 'NotAllowedError') {
-        setError('❌ Permisos de cámara denegados. Por favor, permite el acceso en la configuración del navegador.');
+        setError('Permisos de cámara denegados. Por favor, permite el acceso en la configuración del navegador.');
       } else if (error.name === 'NotFoundError') {
-        setError('❌ No se encontró ninguna cámara en el dispositivo.');
+        setError('No se encontró ninguna cámara en el dispositivo.');
       } else if (error.name === 'NotReadableError') {
-        setError('❌ La cámara está siendo usada por otra aplicación.');
+        setError('La cámara está siendo usada por otra aplicación.');
       } else {
-        setError(`❌ Error al acceder a la cámara: ${error.message}`);
+        setError(`Error al acceder a la cámara: ${error.message}`);
       }
     }
   };
@@ -180,16 +180,16 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       console.error("Error al iniciar cámara:", error);
       
       if (error.name === 'NotAllowedError') {
-        setError('❌ Permisos denegados. Permite el acceso a la cámara en la configuración.');
+        setError('Permisos denegados. Permite el acceso a la cámara en la configuración.');
       } else if (error.name === 'NotFoundError') {
-        setError('❌ Cámara no encontrada. Verifica que tu dispositivo tenga cámara trasera.');
+        setError('Cámara no encontrada. Verifica que tu dispositivo tenga cámara trasera.');
       } else if (error.name === 'NotReadableError') {
-        setError('❌ La cámara está en uso. Cierra otras apps que usen la cámara y reintenta cambiar de cámara.');
+        setError('La cámara está en uso. Cierra otras apps que usen la cámara y reintenta cambiar de cámara.');
       } else if (error.name === 'OverconstrainedError') {
-        setError('❌ No se pudo aplicar la configuración. Reintentando con configuración básica...');
+        setError('No se pudo aplicar la configuración. Reintentando con configuración básica...');
         tryBasicCamera();
       } else {
-        setError(`❌ Error: ${error.message}`);
+        setError(`Error: ${error.message}`);
       }
     }
   };
@@ -288,7 +288,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
           (err: any) => {
             if (err) {
               console.error("Error inicializando Quagga:", err);
-              setError("❌ Error al inicializar escáner de códigos de barras. Intenta con otra cámara.");
+              setError("Error al inicializar escáner de códigos de barras. Intenta con otra cámara.");
               return;
             }
             Quagga.start();
@@ -317,7 +317,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       }, 100);
     } catch (error: any) {
       console.error("Error en scanning de código de barras:", error);
-      setError(`❌ Error: ${error.message}`);
+      setError(`Error: ${error.message}`);
     }
   };
 
@@ -357,18 +357,18 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
 
   const getCameraLabel = (label: string) => {
     if (label.toLowerCase().includes("ultra") || label.includes("0.5")) {
-      return "📐 Ultra Wide (0.5x)";
+      return "Ultra Wide (0.5x)";
     }
     if (label.toLowerCase().includes("tele") || label.includes("2x") || label.includes("telephoto")) {
-      return "🔭 Telephoto (2x)";
+      return "Telephoto (2x)";
     }
     if (label.toLowerCase().includes("back") || label.toLowerCase().includes("rear") || label.toLowerCase().includes("environment")) {
       return "📷 Principal (1x)";
     }
     if (label.toLowerCase().includes("front") || label.toLowerCase().includes("user")) {
-      return "🤳 Frontal";
+      return "Frontal";
     }
-    return `📹 Cámara ${label.substring(0, 20)}`;
+    return `Cámara ${label.substring(0, 20)}`;
   };
 
   return (

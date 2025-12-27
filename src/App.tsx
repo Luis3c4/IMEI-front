@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   Search,
-  CheckCircle,
-  XCircle,
   Loader2,
   AlertCircle,
   ExternalLink,
@@ -11,128 +9,82 @@ import {
 } from "lucide-react";
 import { ScanBarcode } from "lucide-react";
 import Scanner from "./components/Scanner";
-
-// CONFIGURAR ESTAS VARIABLES
-const API_BASE = "http://localhost:5000"; // Cambiar a tu URL de Render en producción
-
-// Interfaces para tipado
-interface Stats {
-  total_consultas: number;
-  sheet_existe: boolean;
-  sheet_url: string;
-  ultima_consulta?: string;
-}
-
-interface DeviceInfo {
-  Demo_Unit: string;
-  Estimated_Purchase_Date: string;
-  IMEI: string;
-  IMEI2: string;
-  Loaner_Device: string;
-  Locked_Carrier: string;
-  MEID: string;
-  Model_Description: string;
-  Purchase_Country: string;
-  Refurbished_Device: string;
-  Replaced_Device: string;
-  Replacement_Device: string;
-  Serial_Number: string;
-  "Sim-Lock_Status": string;
-  Warranty_Status: string;
-  iCloud_Lock: string;
-}
-
-interface InfoCardProps {
-  label: string;
-  value: string | undefined;
-  highlight?: "green" | "yellow" | "red";
-}
-
-interface Service {
-  service: string;
+import Toast from "./components/Toast";
+import InfoCard from "./components/InfoCard";
+import { IMEIAPIService } from "./services/api";
+import type { ToastState, DeviceInfo, Stats, Service } from "./types";
+import { TOAST_DURATION } from "./utils/constants";
+import Header from "./components/Header";
+interface User {
   name: string;
-  price: string;
+  email: string;
 }
-
 export default function IMEIChecker() {
+  // Estados principales
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [serviceId, setServiceId] = useState("17");
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DeviceInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: string } | null>(
-    null
-  );
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
 
+  // Estados de datos globales
   const [stats, setStats] = useState<Stats>({
     total_consultas: 0,
     sheet_existe: false,
     sheet_url: "",
   });
   const [balance, setBalance] = useState<number | null>(null);
-  const [lastOrderInfo, setLastOrderInfo] = useState<{
-    precio: number;
-    order_id: string;
-  } | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
 
+  // Cargar datos al montar
   useEffect(() => {
-    cargarEstadisticas();
-    cargarBalance();
-    cargarServicios();
+    loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const showToast = (message: string, type = "success") => {
+  // Bloquear scroll cuando el scanner está abierto
+  useEffect(() => {
+    if (scannerOpen) {
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [scannerOpen]);
+
+  const showToast = (message: string, type: ToastState["type"] = "success") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => setToast(null), TOAST_DURATION);
   };
 
-  const cargarEstadisticas = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/sheet-stats`);
-      const data: Stats = await response.json();
-      setStats(data);
-    } catch (err) {
-      console.error("Error al cargar estadísticas:", err);
-    }
-  };
-  const cargarBalance = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/balance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setBalance(data.balance);
-      }
-    } catch (err) {
-      console.error("Error al cargar balance:", err);
-    }
-  };
-  // Cargar servicios disponibles
-  const cargarServicios = async () => {
+  const loadInitialData = async () => {
     try {
       setLoadingServices(true);
-      const response = await fetch(`${API_BASE}/api/services`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setServices(data.services);
-      }
+      const [statsData, balanceData, servicesData] = await Promise.all([
+        IMEIAPIService.getStats(),
+        IMEIAPIService.getBalance(),
+        IMEIAPIService.getServices(),
+      ]);
+
+      setStats(statsData);
+      setBalance(balanceData);
+      setServices(servicesData);
     } catch (err) {
-      console.error("Error al cargar servicios:", err);
+      console.error("Error al cargar datos iniciales:", err);
+      showToast("Error al cargar datos", "error");
     } finally {
       setLoadingServices(false);
     }
   };
 
   const handleConsultar = async () => {
-    if (!inputValue) {
+    if (!inputValue.trim()) {
       setError("Por favor ingresa un Serial Number o IMEI");
       return;
     }
@@ -140,115 +92,55 @@ export default function IMEIChecker() {
     setLoading(true);
     setError(null);
     setResult(null);
-    setLastOrderInfo(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/consultar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          service_id: serviceId,
-          input_value: inputValue,
-          formato: "beta",
-        }),
-      });
+      const deviceInfo = await IMEIAPIService.checkDevice(
+        inputValue,
+        serviceId
+      );
+      setResult(deviceInfo);
+      setInputValue("");
+      showToast("✅ Dispositivo encontrado", "success");
 
-      const data = await response.json();
-
-      if (data.success) {
-        setResult(data.data);
-
-        // Guardar info de la orden
-        if (data.precio && data.order_id) {
-          setLastOrderInfo({
-            precio: data.precio,
-            order_id: data.order_id,
-          });
-        }
-
-        // Actualizar balance
-        if (data.balance_restante) {
-          setBalance(parseFloat(data.balance_restante));
-        }
-
-        cargarEstadisticas();
-
-        if (data.sheet_updated) {
-          showToast(
-            `Guardado en Google Sheets - Total: ${data.total_registros} registros`,
-            "success"
-          );
-        } else {
-          showToast(
-            "Consulta exitosa pero no se pudo guardar en Sheets",
-            "warning"
-          );
-        }
-
-        setInputValue("");
-      } else {
-        setError(data.message || "Error en la consulta");
-        showToast(` ${data.message}`, "error");
-      }
+      // Recargar datos después de consulta
+      await loadInitialData();
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-        showToast(` ${err.message}`, "error");
-      } else {
-        setError("Error desconocido");
-        showToast(" Error desconocido", "error");
-      }
+      const errorMessage =
+        (err as Error)?.message || "Error al verificar el dispositivo";
+      setError(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
   };
+
   const handleAbrirSheet = () => {
     if (stats.sheet_url) {
       window.open(stats.sheet_url, "_blank");
       showToast("📊 Abriendo Google Sheet...", "success");
     }
   };
+
   const handleNuevaConsulta = () => {
     setInputValue("");
     setResult(null);
     setError(null);
   };
 
+  const handleScan = (value: string) => {
+    setInputValue(value.toUpperCase());
+    setScannerOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-br from-green-50 via-white to-blue-50">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 ${
-            toast.type === "success"
-              ? "bg-green-500 text-white"
-              : toast.type === "warning"
-              ? "bg-yellow-500 text-white"
-              : "bg-red-500 text-white"
-          }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle size={20} />
-          ) : toast.type === "warning" ? (
-            <AlertCircle size={20} />
-          ) : (
-            <XCircle size={20} />
-          )}
-          <span className="font-medium">{toast.message}</span>
-        </div>
-      )}
-
+      <Toast toast={toast} />
+      <Header
+        user={user}
+        onLoginClick={() => setIsLoginModalOpen(true)}
+        onUserClick={() => setIsUserMenuOpen(true)}
+      />
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            📱 Consultor IMEI/Serial iPhone
-          </h1>
-          <p className="text-gray-600">
-            Consulta información de dispositivos Apple con DHRU Fusion API
-          </p>
-        </div>
-
         {/* Balance Bar */}
         {balance !== null && (
           <div className="bg-linear-to-r from-green-600 to-blue-600 text-white rounded-lg shadow-lg p-4 mb-4">
@@ -262,22 +154,13 @@ export default function IMEIChecker() {
                   <p className="text-2xl font-bold">${balance.toFixed(2)}</p>
                 </div>
               </div>
-              {lastOrderInfo && (
-                <div className="text-right">
-                  <p className="text-xs opacity-75">Última consulta</p>
-                  <p className="font-semibold">-${lastOrderInfo.precio}</p>
-                  <p className="text-xs opacity-75">
-                    Order #{lastOrderInfo.order_id}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         )}
 
         {/* Google Sheets Stats Bar */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <Sheet className="text-green-600" size={40} />
               <div>
@@ -389,57 +272,16 @@ export default function IMEIChecker() {
                     </>
                   )}
                 </button>
-                {/* Botón Camara */}
+
+                {/* Botón Scanner */}
                 <button
                   onClick={() => setScannerOpen(true)}
-                  className="w-full bg-linear-to-r from-green-600 to-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                  className="w-full bg-linear-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2"
                 >
-                  {loading ? (
-                    <>
-                      <Loader2 className="animate-spin" size={20} />
-                      Consultando...
-                    </>
-                  ) : (
-                    <>
-                      <ScanBarcode size={20} />
-                      Scanner
-                    </>
-                  )}
+                  <ScanBarcode size={20} />
+                  Abrir Scanner
                 </button>
-                {scannerOpen && (
-                  <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-end sm:items-center justify-center">
-                    <div className="bg-white rounded-t-3xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-sm mx-4 sm:mx-0 max-h-[90vh] sm:max-h-[95vh] overflow-y-auto">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-center flex-1">
-                          📷 Escanear código
-                        </h3>
-                        <button
-                          onClick={() => setScannerOpen(false)}
-                          className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-lg"
-                        >
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
 
-                      <Scanner
-                        onScan={(value) => {
-                          setInputValue(value.toUpperCase());
-                          setScannerOpen(false);
-                        }}
-                        onClose={() => setScannerOpen(false)}
-                      />
-
-                      <button
-                        onClick={() => setScannerOpen(false)}
-                        className="mt-4 w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                )}
                 {/* Botón Nueva Consulta */}
                 {result && (
                   <button
@@ -550,7 +392,7 @@ export default function IMEIChecker() {
                 <div className="space-y-6">
                   {/* Header del Resultado */}
                   <div className="bg-linear-to-r from-green-600 to-blue-600 text-white p-6 rounded-lg">
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <h3 className="text-2xl font-bold mb-2">
                           {result.Model_Description ||
@@ -570,7 +412,7 @@ export default function IMEIChecker() {
                           })}
                         </p>
                       </div>
-                      <div className="bg-white bg-opacity-20 px-4 py-2 rounded-lg text-center">
+                      <div className="bg-white bg-opacity-20 px-4 py-2 rounded-lg text-center shrink-0">
                         <Sheet className="mx-auto mb-1" size={24} />
                         <p className="text-xs text-green-100">Guardado</p>
                       </div>
@@ -632,7 +474,7 @@ export default function IMEIChecker() {
                   </div>
 
                   {/* Botones de Acción */}
-                  <div className="pt-4 border-t flex gap-3">
+                  <div className="pt-4 border-t flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={handleAbrirSheet}
                       className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
@@ -653,31 +495,51 @@ export default function IMEIChecker() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-function InfoCard({ label, value, highlight }: InfoCardProps) {
-  const getHighlightClass = () => {
-    if (!highlight) return "bg-gray-50 border-gray-200";
-    if (highlight === "green") return "bg-green-50 border-green-300";
-    if (highlight === "yellow") return "bg-yellow-50 border-yellow-300";
-    if (highlight === "red") return "bg-red-50 border-red-300";
-  };
+      {/* Scanner Modal */}
+      {scannerOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-end sm:items-center justify-center overflow-hidden">
+          <div className="bg-white rounded-t-3xl sm:rounded-xl p-4 sm:p-6 w-full sm:max-w-sm mx-4 sm:mx-0 max-h-[90vh] sm:max-h-[95vh] overflow-y-auto flex flex-col">
+            <div className="flex items-center justify-between mb-4 shrink-0">
+              <h3 className="text-lg font-semibold text-center flex-1">
+                📷 Escanear código
+              </h3>
+              <button
+                onClick={() => setScannerOpen(false)}
+                className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-lg shrink-0"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
 
-  const getTextClass = () => {
-    if (!highlight) return "text-gray-900";
-    if (highlight === "green") return "text-green-900 font-semibold";
-    if (highlight === "yellow") return "text-yellow-900 font-semibold";
-    if (highlight === "red") return "text-red-900 font-semibold";
-  };
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <Scanner
+                onScan={handleScan}
+                onClose={() => setScannerOpen(false)}
+              />
+            </div>
 
-  return (
-    <div className={`p-4 rounded-lg border ${getHighlightClass()}`}>
-      <p className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-1">
-        {label}
-      </p>
-      <p className={`text-lg font-mono ${getTextClass()}`}>{value || "N/A"}</p>
+            <button
+              onClick={() => setScannerOpen(false)}
+              className="mt-4 w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold transition shrink-0"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
