@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { Camera, ZoomIn, ZoomOut, Maximize2, Video, AlertCircle } from "lucide-react";
-import Quagga from "@ericblade/quagga2";
+import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  Camera,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Video,
+  AlertCircle,
+} from "lucide-react";
+import Quagga,{ type QuaggaJSConfigObject, type QuaggaJSResultObject } from "@ericblade/quagga2";
 
 interface ScannerProps {
   onScan: (value: string) => void;
@@ -28,193 +35,27 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
   const [minZoom, setMinZoom] = useState(1);
   const [zoomSupported, setZoomSupported] = useState(false);
   const [lastScannedCode, setLastScannedCode] = useState("");
-  const [error, setError] = useState<string>("");
-  const [isHttps, setIsHttps] = useState(true);
-
-  // Verificar HTTPS
-  useEffect(() => {
-    const isSecure = window.location.protocol === 'https:' || 
-                     window.location.hostname === 'localhost' ||
-                     window.location.hostname === '127.0.0.1';
-    setIsHttps(isSecure);
+  const [error, setError] = useState(() => {
+    const isSecure =
+      window.location.protocol === "https:" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
     
     if (!isSecure) {
-      setError('⚠️ Necesitas HTTPS para acceder a la cámara trasera. En desarrollo usa localhost.');
+      return "Necesitas HTTPS para acceder a la cámara trasera. En desarrollo usa localhost.";
     }
-  }, []);
+    return "";
+  });
+  const [isHttps] = useState(() => {
+    const isSecure =
+      window.location.protocol === "https:" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+    return isSecure;
+  });
 
-  // Cargar cámaras disponibles
-  useEffect(() => {
-    if (isHttps) {
-      loadCameras();
-    }
-  }, [isHttps]);
-
-  // Iniciar escaneo cuando se selecciona una cámara
-  useEffect(() => {
-    if (selectedCamera && isHttps) {
-      startCamera(selectedCamera);
-    }
-    return () => {
-      stopCamera();
-    };
-  }, [selectedCamera]);
-
-  const loadCameras = async () => {
-    try {
-      // IMPORTANTE: Primero solicitar permisos básicos
-      const tempStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
-      
-      // Detener el stream temporal
-      tempStream.getTracks().forEach(track => track.stop());
-
-      // Ahora sí, enumerar dispositivos
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(
-        (device) => device.kind === "videoinput"
-      ) as CameraDevice[];
-
-      console.log("Cámaras disponibles:", videoDevices);
-
-      // Filtrar SOLO cámaras traseras (remover frontal)
-      const backCameras = videoDevices.filter(cam => {
-        const label = cam.label.toLowerCase();
-        return (
-          label.includes("back") ||
-          label.includes("rear") ||
-          label.includes("trasera") ||
-          label.includes("environment") ||
-          label.includes("main")
-        ) && !label.includes("front") && !label.includes("user") && !label.includes("frontal");
-      });
-
-      console.log("Cámaras traseras filtradas:", backCameras);
-      setCameras(backCameras);
-
-      if (backCameras.length === 0) {
-        setError(' No se encontraron cámaras traseras. Solo se soportan cámaras traseras.');
-        return;
-      }
-
-      // Usar la primera cámara trasera
-      const defaultCamera = backCameras[0];
-      if (defaultCamera) {
-        setSelectedCamera(defaultCamera.deviceId);
-      }
-    } catch (error: any) {
-      console.error("Error al cargar cámaras:", error);
-      if (error.name === 'NotAllowedError') {
-        setError('Permisos de cámara denegados. Por favor, permite el acceso en la configuración del navegador.');
-      } else if (error.name === 'NotFoundError') {
-        setError('No se encontró ninguna cámara en el dispositivo.');
-      } else if (error.name === 'NotReadableError') {
-        setError('La cámara está siendo usada por otra aplicación.');
-      } else {
-        setError(`Error al acceder a la cámara: ${error.message}`);
-      }
-    }
-  };
-
-  const startCamera = async (deviceId: string) => {
-    try {
-      setError('');
-      stopCamera();
-      
-      // Pequeño delay para asegurar que todo se limpia
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Configuración flexible para móviles
-      const constraints: MediaStreamConstraints = {
-        video: {
-          deviceId: deviceId ? { ideal: deviceId } : undefined,
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false
-      };
-
-      console.log('Intentando abrir cámara con:', constraints);
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        
-        // Esperar a que el video esté listo
-        await new Promise((resolve) => {
-          if (videoRef.current) {
-            videoRef.current.onloadedmetadata = resolve;
-          }
-        });
-        
-        await videoRef.current.play();
-
-        // Obtener capacidades de la cámara
-        const videoTrack = stream.getVideoTracks()[0];
-        videoTrackRef.current = videoTrack;
-
-        const capabilities = videoTrack.getCapabilities() as any;
-        const settings = videoTrack.getSettings() as any;
-
-        console.log("Capacidades de la cámara:", capabilities);
-        console.log("Configuración actual:", settings);
-
-        // Configurar zoom
-        if (capabilities.zoom) {
-          setZoomSupported(true);
-          setMinZoom(capabilities.zoom.min || 1);
-          setMaxZoom(capabilities.zoom.max || 1);
-          setZoomLevel(settings.zoom || capabilities.zoom.min || 1);
-        } else {
-          setZoomSupported(false);
-        }
-
-        // Iniciar escaneo
-        setIsScanning(true);
-        startScanning();
-      }
-    } catch (error: any) {
-      console.error("Error al iniciar cámara:", error);
-      
-      if (error.name === 'NotAllowedError') {
-        setError('Permisos denegados. Permite el acceso a la cámara en la configuración.');
-      } else if (error.name === 'NotFoundError') {
-        setError('Cámara no encontrada. Verifica que tu dispositivo tenga cámara trasera.');
-      } else if (error.name === 'NotReadableError') {
-        setError('La cámara está en uso. Cierra otras apps que usen la cámara y reintenta cambiar de cámara.');
-      } else if (error.name === 'OverconstrainedError') {
-        setError('No se pudo aplicar la configuración. Reintentando con configuración básica...');
-        tryBasicCamera();
-      } else {
-        setError(`Error: ${error.message}`);
-      }
-    }
-  };
-
-  // Fallback con configuración mínima
-  const tryBasicCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
-      
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-        setIsScanning(true);
-        startScanning();
-        setError('');
-      }
-    } catch (err) {
-      console.error('Falló también la configuración básica:', err);
-    }
-  };
-
-  const stopCamera = () => {
+  // Detener cámara y escaneo
+  const stopCamera = useCallback(() => {
     setIsScanning(false);
 
     if (scanIntervalRef.current) {
@@ -237,55 +78,50 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       Quagga.stop();
     } catch (err) {
       // Ignorar errores si Quagga no está iniciado
+      console.log("Quagga no estaba iniciado al detener, continuando...", err);
     }
-  };
+  }, []);
 
-  const startScanning = () => {
-    if (scanIntervalRef.current) {
-      clearInterval(scanIntervalRef.current);
-    }
-
-    startBarcodeScanning();
-  };
-
-  const startBarcodeScanning = () => {
+  const startBarcodeScanning = useCallback(() => {
     try {
       // Detener Quagga si está corriendo
       try {
         Quagga.stop();
       } catch (e) {
         // Ignorar si no está iniciado
+        console.log("Quagga no estaba iniciado, continuando...", e);
       }
 
       // Pequeño delay para asegurar que Quagga se detiene completamente
       setTimeout(() => {
+        const config: QuaggaJSConfigObject = {
+          inputStream: {
+            type: "LiveStream",
+            target: videoRef.current as HTMLElement,
+            constraints: {
+              width: { min: 320, ideal: 1280 },
+              height: { min: 240, ideal: 720 },
+              facingMode: "environment",
+              deviceId: selectedCamera ? { ideal: selectedCamera } : undefined,
+            },
+          },
+          decoder: {
+            readers: [
+              "code_128_reader",
+              "ean_reader",
+              "ean_8_reader",
+              "code_39_reader",
+              "code_93_reader",
+              "upc_reader",
+              "upc_e_reader",
+            ],
+          },
+          frequency: 10,
+        };
+
         Quagga.init(
-          {
-            inputStream: {
-              type: "LiveStream",
-              target: videoRef.current as any,
-              constraints: {
-                width: { min: 320, ideal: 1280 },
-                height: { min: 240, ideal: 720 },
-                facingMode: "environment",
-                deviceId: selectedCamera ? { ideal: selectedCamera } : undefined,
-              },
-            },
-            decoder: {
-              readers: [
-                "code_128_reader",
-                "ean_reader",
-                "ean_8_reader",
-                "code_39_reader",
-                "code_93_reader",
-                "upc_reader",
-                "upc_e_reader",
-              ],
-            },
-            frequency: 10,
-            multiple: false,
-          } as any,
-          (err: any) => {
+          config,
+          (err) => {
             if (err) {
               console.error("Error inicializando Quagga:", err);
               setError("Error al inicializar escáner de códigos de barras. Intenta con otra cámara.");
@@ -293,12 +129,13 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
             }
             Quagga.start();
 
-            Quagga.onDetected((result: any) => {
+            Quagga.onDetected((result: QuaggaJSResultObject) => {
               if (result.codeResult && result.codeResult.code) {
                 const barcode = result.codeResult.code;
                 // Filtrar: Serial Number (S + alfanumérico) o IMEI (15 dígitos)
                 const isValidSerial = /^S[A-Z0-9]{8,}$/.test(barcode); // Serial que empieza con S
                 const isValidIMEI = /^\d{15}$/.test(barcode); // IMEI con exactamente 15 dígitos
+                
                 if ((isValidSerial || isValidIMEI) && barcode !== lastScannedCode) {
                   console.log("Código de barras detectado:", barcode, isValidSerial ? "(Serial Number)" : "(IMEI)");
                   setLastScannedCode(barcode);
@@ -307,7 +144,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
                   stopCamera();
                   onScan(barcode);
                   onClose();
-                } else if(barcode !== lastScannedCode) {
+                } else if (barcode !== lastScannedCode) {
                   console.log("Código detectado pero no válido:", barcode);
                 }
               }
@@ -315,11 +152,213 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
           }
         );
       }, 100);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error en scanning de código de barras:", error);
-      setError(`Error: ${error.message}`);
+      setError(`Error: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
-  };
+  }, [selectedCamera, lastScannedCode, stopCamera, onScan, onClose]);
+  const startScanning = useCallback(() => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+    }
+
+    startBarcodeScanning();
+  }, [startBarcodeScanning]);
+
+  const loadCameras = useCallback(async () => {
+    try {
+      // IMPORTANTE: Primero solicitar permisos básicos
+      const tempStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+
+      // Detener el stream temporal
+      tempStream.getTracks().forEach((track) => track.stop());
+
+      // Ahora sí, enumerar dispositivos
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(
+        (device) => device.kind === "videoinput"
+      ) as CameraDevice[];
+
+      console.log("Cámaras disponibles:", videoDevices);
+
+      // Filtrar SOLO cámaras traseras (remover frontal)
+      const backCameras = videoDevices.filter((cam) => {
+        const label = cam.label.toLowerCase();
+        return (
+          (label.includes("back") ||
+            label.includes("rear") ||
+            label.includes("trasera") ||
+            label.includes("environment") ||
+            label.includes("main")) &&
+          !label.includes("front") &&
+          !label.includes("user") &&
+          !label.includes("frontal")
+        );
+      });
+
+      console.log("Cámaras traseras filtradas:", backCameras);
+      setCameras(backCameras);
+
+      if (backCameras.length === 0) {
+        setError(
+          " No se encontraron cámaras traseras. Solo se soportan cámaras traseras."
+        );
+        return;
+      }
+
+      // Usar la primera cámara trasera
+      const defaultCamera = backCameras[0];
+      if (defaultCamera) {
+        setSelectedCamera(defaultCamera.deviceId);
+      }
+    } catch (error) {
+      const err = error as DOMException | Error;
+      console.error("Error al cargar cámaras:", err);
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        setError(
+          "Permisos de cámara denegados. Por favor, permite el acceso en la configuración del navegador."
+        );
+      } else if (err instanceof DOMException && err.name === "NotFoundError") {
+        setError("No se encontró ninguna cámara en el dispositivo.");
+      } else if (err instanceof DOMException && err.name === "NotReadableError") {
+        setError("La cámara está siendo usada por otra aplicación.");
+      } else if (err instanceof Error) {
+        setError(`Error al acceder a la cámara: ${err.message}`);
+      } else {
+        setError("Error desconocido al acceder a la cámara.");
+      }
+    }
+  }, []);
+  // Cargar cámaras disponibles
+  useEffect(() => {
+    if (isHttps) {
+      loadCameras();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [isHttps]);
+  // Fallback con configuración mínima
+  const tryBasicCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setIsScanning(true);
+        startScanning();
+        setError("");
+      }
+    } catch (err) {
+      console.error("Falló también la configuración básica:", err);
+    }
+  }, [startScanning]);
+
+  const startCamera = useCallback(
+    async (deviceId: string) => {
+      try {
+        setError("");
+        stopCamera();
+
+        // Pequeño delay para asegurar que todo se limpia
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
+        // Configuración flexible para móviles
+        const constraints: MediaStreamConstraints = {
+          video: {
+            deviceId: deviceId ? { ideal: deviceId } : undefined,
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        };
+
+        console.log("Intentando abrir cámara con:", constraints);
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+
+          // Esperar a que el video esté listo
+          await new Promise((resolve) => {
+            if (videoRef.current) {
+              videoRef.current.onloadedmetadata = resolve;
+            }
+          });
+
+          await videoRef.current.play();
+
+          // Obtener capacidades de la cámara
+          const videoTrack = stream.getVideoTracks()[0];
+          videoTrackRef.current = videoTrack;
+
+          const capabilities = videoTrack.getCapabilities() as MediaTrackCapabilities & { zoom?: DoubleRange };
+          const settings = videoTrack.getSettings() as MediaTrackSettings & { zoom?: number };
+
+          console.log("Capacidades de la cámara:", capabilities);
+          console.log("Configuración actual:", settings);
+
+          // Configurar zoom
+          if (capabilities.zoom) {
+            setZoomSupported(true);
+            setMinZoom(capabilities.zoom.min || 1);
+            setMaxZoom(capabilities.zoom.max || 1);
+            setZoomLevel(settings.zoom || capabilities.zoom.min || 1);
+          } else {
+            setZoomSupported(false);
+          }
+
+          // Iniciar escaneo
+          setIsScanning(true);
+          startScanning();
+        }
+      } catch (error) {
+        const err = error as DOMException | Error;
+        console.error("Error al iniciar cámara:", err);
+
+        if (err instanceof DOMException && err.name === "NotAllowedError") {
+          setError(
+            "Permisos denegados. Permite el acceso a la cámara en la configuración."
+          );
+        } else if (err instanceof DOMException && err.name === "NotFoundError") {
+          setError(
+            "Cámara no encontrada. Verifica que tu dispositivo tenga cámara trasera."
+          );
+        } else if (err instanceof DOMException && err.name === "NotReadableError") {
+          setError(
+            "La cámara está en uso. Cierra otras apps que usen la cámara y reintenta cambiar de cámara."
+          );
+        } else if (err instanceof DOMException && err.name === "OverconstrainedError") {
+          setError(
+            "No se pudo aplicar la configuración. Reintentando con configuración básica..."
+          );
+          tryBasicCamera();
+        } else if (err instanceof Error) {
+          setError(`Error: ${err.message}`);
+        } else {
+          setError("Error desconocido al iniciar cámara.");
+        }
+      }
+    },
+    [startScanning, stopCamera, tryBasicCamera]
+  );
+  // Iniciar escaneo cuando se selecciona una cámara
+  useEffect(() => {
+    if (selectedCamera && isHttps) {
+      startCamera(selectedCamera);
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [selectedCamera, isHttps, startCamera]);
 
   const applyZoom = async (newZoom: number) => {
     if (!videoTrackRef.current || !zoomSupported) return;
@@ -328,7 +367,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
       const clampedZoom = Math.max(minZoom, Math.min(newZoom, maxZoom));
 
       await videoTrackRef.current.applyConstraints({
-        advanced: [{ zoom: clampedZoom } as any],
+        advanced: [{ zoom: clampedZoom } as MediaTrackConstraintSet],
       });
 
       setZoomLevel(clampedZoom);
@@ -359,13 +398,24 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
     if (label.toLowerCase().includes("ultra") || label.includes("0.5")) {
       return "Ultra Wide (0.5x)";
     }
-    if (label.toLowerCase().includes("tele") || label.includes("2x") || label.includes("telephoto")) {
+    if (
+      label.toLowerCase().includes("tele") ||
+      label.includes("2x") ||
+      label.includes("telephoto")
+    ) {
       return "Telephoto (2x)";
     }
-    if (label.toLowerCase().includes("back") || label.toLowerCase().includes("rear") || label.toLowerCase().includes("environment")) {
+    if (
+      label.toLowerCase().includes("back") ||
+      label.toLowerCase().includes("rear") ||
+      label.toLowerCase().includes("environment")
+    ) {
       return "📷 Principal (1x)";
     }
-    if (label.toLowerCase().includes("front") || label.toLowerCase().includes("user")) {
+    if (
+      label.toLowerCase().includes("front") ||
+      label.toLowerCase().includes("user")
+    ) {
       return "Frontal";
     }
     return `Cámara ${label.substring(0, 20)}`;
@@ -499,8 +549,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
               disabled={zoomLevel <= minZoom}
               className="flex flex-col items-center justify-center p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
             >
-              <ZoomOut className="w-4 h-4 mb-1" />
-              -
+              <ZoomOut className="w-4 h-4 mb-1" />-
             </button>
 
             <button
@@ -508,8 +557,7 @@ export default function Scanner({ onScan, onClose }: ScannerProps) {
               disabled={zoomLevel >= maxZoom}
               className="flex flex-col items-center justify-center p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
             >
-              <ZoomIn className="w-4 h-4 mb-1" />
-              +
+              <ZoomIn className="w-4 h-4 mb-1" />+
             </button>
 
             <button

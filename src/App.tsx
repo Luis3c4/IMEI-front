@@ -21,9 +21,9 @@ interface User {
 }
 export default function IMEIChecker() {
   // Estados principales
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [user, ] = useState<User | null>(null);
+  const [, setIsLoginModalOpen] = useState(false);
+  const [, setIsUserMenuOpen] = useState(false);
   const [serviceId, setServiceId] = useState("17");
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
