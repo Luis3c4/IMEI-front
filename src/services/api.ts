@@ -8,12 +8,13 @@ export class IMEIAPIService {
     code: string,
     serviceId: string
   ): Promise<DeviceInfo> {
-    const response = await fetch(`${API_BASE}/api/check`, {
+    const response = await fetch(`${API_BASE}/api/devices/consultar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        imei_code: code,
+        input_value: code,
         service_id: serviceId,
+        formato: "beta",
       }),
     });
 
@@ -26,17 +27,17 @@ export class IMEIAPIService {
   }
 
   static async getStats(): Promise<Stats> {
-    const response = await fetch(`${API_BASE}/api/sheet-stats`);
+    const response = await fetch(`${API_BASE}/api/sheets/stats`);
     if (!response.ok) throw new Error("Error al cargar estadísticas");
     return response.json();
   }
 
   static async getBalance(): Promise<number | null> {
     try {
-      const response = await fetch(`${API_BASE}/api/balance`);
+      const response = await fetch(`${API_BASE}/api/devices/balance`);
       if (!response.ok) return null;
       const data = await response.json();
-      return data.balance || null;
+      return data.balance ?? null;
     } catch {
       return null;
     }
@@ -44,7 +45,7 @@ export class IMEIAPIService {
 
   static async getServices(): Promise<Service[]> {
     try {
-      const response = await fetch(`${API_BASE}/api/services`);
+      const response = await fetch(`${API_BASE}/api/devices/services`);
       if (!response.ok) return [];
       return response.json();
     } catch {
@@ -54,7 +55,7 @@ export class IMEIAPIService {
 
   static async getLastOrder(): Promise<LastOrderInfo | null> {
     try {
-      const response = await fetch(`${API_BASE}/api/last-order`);
+      const response = await fetch(`${API_BASE}/api/devices/last-order`);
       if (!response.ok) return null;
       return response.json();
     } catch {
