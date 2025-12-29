@@ -62,4 +62,23 @@ export class IMEIAPIService {
       return null;
     }
   }
+
+  // Generar/preview de PDF de factura de prueba
+  static async getInvoiceTestPdfPreview(): Promise<Blob> {
+    const response = await fetch(`${API_BASE}/api/invoices/test/pdf?preview=true`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") || "";
+      // Si devuelve JSON con error
+      if (contentType.includes("application/json")) {
+        const error = await response.json();
+        throw new Error(error.error || "Error al generar el PDF");
+      }
+      throw new Error("Error al generar el PDF");
+    }
+
+    return response.blob();
+  }
 }

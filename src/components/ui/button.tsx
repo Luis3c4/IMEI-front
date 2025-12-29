@@ -24,6 +24,8 @@ const buttonVariants = cva(
         user: "bg-muted text-foreground hover:bg-muted/80 font-medium",
         gradient:
           "gradient-primary text-primary-foreground hover:opacity-90 shadow-button-primary",
+        generate:
+          "bg-primary text-primary-foreground shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none disabled:hover:scale-100",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

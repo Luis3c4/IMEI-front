@@ -59,7 +59,7 @@ const data = {
       items: [
         {
           title: "Crear Recibo",
-          url: "/create-invoice",
+          url: "/factura",
         },
         {
           title: "Starred",

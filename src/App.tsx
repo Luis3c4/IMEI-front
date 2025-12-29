@@ -134,12 +134,12 @@ export default function IMEIChecker() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-green-50 via-white to-blue-50">
-      <Toast toast={toast} />
       <Header
         user={user}
         onLoginClick={() => setIsLoginModalOpen(true)}
         onUserClick={() => setIsUserMenuOpen(true)}
       />
+      <Toast toast={toast} />
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Balance Bar */}
         {balance !== null && (

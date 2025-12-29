@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/hooks/useAuth'
 
-export const LoginPage = () => {
+const LoginPage = () => {
   const [isSignUp, setIsSignUp] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -183,3 +183,4 @@ export const LoginPage = () => {
     </div>
   )
 }
+export default LoginPage

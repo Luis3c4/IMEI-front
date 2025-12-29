@@ -1,27 +1,10 @@
-import { createContext, useState, useEffect, type ReactNode } from 'react'
-
-interface User {
-  id: string
-  email: string
-  name: string
-}
-
-interface AuthContextType {
-  user: User | null
-  isLoading: boolean
-  isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<void>
-  logout: () => void
-  signup: (name: string, email: string, password: string) => Promise<void>
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined)
+import { useState, useEffect, type ReactNode } from 'react'
+import { AuthContext, type User } from './AuthContext'
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Verifica si hay usuario en localStorage al cargar
   useEffect(() => {
     const storedUser = localStorage.getItem('user')
     if (storedUser) {
@@ -37,7 +20,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      // Permitir login de demo con admin/admin
       if (email === 'admin@gmail.com' && password === 'admin') {
         const userData = { id: '1', email: 'admin', name: 'Administrador' }
         setUser(userData)
@@ -46,7 +28,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return
       }
 
-      // Llamada real a tu API/Supabase
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setUser(userData)
       localStorage.setItem('user', JSON.stringify(userData))
-      localStorage.setItem('token', data.token) // Guarda el token para requests
+      localStorage.setItem('token', data.token)
     } finally {
       setIsLoading(false)
     }
@@ -69,7 +50,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (name: string, email: string, password: string) => {
     setIsLoading(true)
     try {
-      // TODO: Reemplazar con llamada real a tu API/Supabase
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ 
+      value={{
         user,
         isLoading,
         isAuthenticated: !!user,
