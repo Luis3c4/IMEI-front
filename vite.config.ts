@@ -9,7 +9,16 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      'tslib': path.resolve(__dirname, 'node_modules/tslib/tslib.es6.js')
     },
   },
+  build: {
+    rollupOptions: {
+      // Asegurar que tslib se incluya en el bundle
+      output: {
+        manualChunks: {
+          'tslib': ['tslib']
+        }
+      }
+    }
+  }
 })
