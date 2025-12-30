@@ -59,8 +59,7 @@ export const mockInvoice: Invoice = {
       quantity_ordered: 1,
       quantity_fulfilled: 1,
       extended_price: 129.0,
-      category: "Accesorios"
-    },
+      category: "Accesorios"},
     {
       id: "3",
       name: "APPLE PENCIL PRO-AME",

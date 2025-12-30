@@ -26,7 +26,41 @@ const handleAddProduct = (product: Product) => {
   };
 
   const handleGeneratePDF = () => {
-    console.log("Generando PDF con productos:", selectedProducts);
+    // Crear el body con la estructura de Invoice
+  const invoiceBody = {
+    order_date: new Date().toLocaleDateString("en-US", { 
+      year: "numeric", 
+      month: "long", 
+      day: "2-digit" 
+    }),
+    order_number: `W${Date.now().toString().slice(-10)}`, // Generar número único
+    customer: {
+      name: "Geraldine Eva Flores Flores", // Dato estático por ahora
+      customer_number: "900007" // Dato estático por ahora
+    },
+    products: selectedProducts.map((product) => ({
+      name: product.name,
+      product_number: product.id, // Usando el id como product_number
+      serial_number: `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`, // Serial generado
+      item_price: product.item_price,
+      quantity_ordered: 1,
+      quantity_fulfilled: 1,
+      extended_price: product.item_price,
+    })),
+    invoice_info: {
+      invoice_number: `MA${Date.now().toString().slice(-8)}`, // Generar número único
+      invoice_date: new Date().toLocaleDateString("en-US", { 
+        year: "numeric", 
+        month: "long", 
+        day: "2-digit" 
+      })
+    }
+  };
+
+  // Mostrar la estructura por consola
+  console.log("Body para enviar al backend:", JSON.stringify(invoiceBody, null, 2));
+  console.log("Objeto invoice:", invoiceBody);
+
      // Generar/abrir preview de PDF al agregar producto
     IMEIAPIService.getInvoiceTestPdfPreview()
       .then((pdfBlob) => {
