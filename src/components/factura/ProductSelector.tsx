@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { mockInvoice, formatPrice, type Product } from "@/data/products";
+import { formatPrice, type Product } from "@/data/products";
+import { IMEIAPIService } from "@/services/api";
 
 interface ProductSelectorProps {
   onAddProduct: (product: Product) => void;
@@ -18,16 +19,38 @@ interface ProductSelectorProps {
 
 export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const iPhoneProducts = mockInvoice.products;
-  const groupedProducts = iPhoneProducts.reduce((acc, product) => {
-    if (!acc[product.category]) {
-      acc[product.category] = [];
-    }
-    acc[product.category].push(product);
-    return acc;
-  }, {} as Record<string, Product[]>);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const isProductSelected = (productId: number) => {
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const items = await IMEIAPIService.getProducts();
+        setProducts(items);
+        setError(null);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Error al cargar productos";
+        setError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, []);
+
+  const groupedProducts = useMemo(() => {
+    return products.reduce((acc, product) => {
+      if (!acc[product.category]) {
+        acc[product.category] = [];
+      }
+      acc[product.category].push(product);
+      return acc;
+    }, {} as Record<string, Product[]>);
+  }, [products]);
+
+  const isProductSelected = (productId: string) => {
     return selectedProducts.some((p) => p.id === productId);
   };
 
@@ -38,7 +61,9 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
           variant="outline"
           className="w-full justify-between h-12 px-4 bg-card border-border hover:bg-secondary/50 transition-all duration-200"
         >
-          <span className="text-muted-foreground">Seleccionar producto...</span>
+          <span className="text-muted-foreground">
+            {isLoading ? "Cargando productos..." : "Seleccionar producto..."}
+          </span>
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </Button>
       </DropdownMenuTrigger>
@@ -46,13 +71,31 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
         className="w-(--radix-dropdown-menu-trigger-width) max-h-100 overflow-y-auto bg-popover border-border shadow-elevated z-50"
         align="start"
       >
-        {Object.entries(groupedProducts).map(([category, products], index) => (
+        {isLoading && (
+          <DropdownMenuLabel className="text-sm font-medium text-muted-foreground px-3 py-4">
+            Cargando productos...
+          </DropdownMenuLabel>
+        )}
+
+        {error && !isLoading && (
+          <div className="px-3 py-4 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        {!isLoading && !error && products.length === 0 && (
+          <div className="px-3 py-4 text-sm text-muted-foreground">
+            No hay productos disponibles.
+          </div>
+        )}
+
+        {!isLoading && !error && Object.entries(groupedProducts).map(([category, grouped], index) => (
           <div key={category}>
             {index > 0 && <DropdownMenuSeparator className="bg-border" />}
             <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2">
               {category}
             </DropdownMenuLabel>
-            {products.map((product) => {
+            {grouped.map((product) => {
               const isSelected = isProductSelected(product.id);
               return (
                 <DropdownMenuItem
@@ -60,6 +103,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                   onClick={() => {
                     if (!isSelected) {
                       onAddProduct(product);
+                      setIsOpen(false);
                     }
                   }}
                   disabled={isSelected}

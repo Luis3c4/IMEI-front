@@ -13,7 +13,7 @@ const handleAddProduct = (product: Product) => {
     setSelectedProducts((prev) => [...prev, product]);
   };
 
-  const handleRemoveProduct = (productId: number) => {
+  const handleRemoveProduct = (productId: string) => {
     setSelectedProducts((prev) => {
       const index = prev.findIndex((p) => p.id === productId);
       if (index !== -1) {

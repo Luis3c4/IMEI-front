@@ -1,13 +1,14 @@
 // Interfaces para la estructura de la factura
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   product_number: string;
   serial_number: string;
   item_price: number;
-  quantity_ordered: number;
-  quantity_fulfilled: number;
-  extended_price: number;
+  quantity?: number;
+  quantity_ordered?: number;
+  quantity_fulfilled?: number;
+  extended_price?: number;
   category: string;
 }
 
@@ -39,7 +40,7 @@ export const mockInvoice: Invoice = {
   },
   products: [
     {
-      id: 1,
+      id: "1",
       name: "IPAD MINI 8.3 WIFI 128GB PURPLE - USA",
       product_number: "MXN93LL/A",
       serial_number: "L9FHJMXD66",
@@ -50,7 +51,7 @@ export const mockInvoice: Invoice = {
       category: "iPad"
     },
     {
-      id: 2 ,
+      id: "2" ,
       name: "APPLE PENCIL PRO-AME",
       product_number: "MX2D3AM/A",
       serial_number: "D9D257714C",
@@ -61,7 +62,7 @@ export const mockInvoice: Invoice = {
       category: "Accesorios"
     },
     {
-      id: 3,
+      id: "3",
       name: "APPLE PENCIL PRO-AME",
       product_number: "MX2D3AM/A",
       serial_number: "D9D257714C",
@@ -72,7 +73,7 @@ export const mockInvoice: Invoice = {
       category: "Accesorios"
     },
     {
-      id: 4,
+      id: "4",
       name: "APPLE PENCIL PRO-AME",
       product_number: "MX2D3AM/A",
       serial_number: "D9D257714C",

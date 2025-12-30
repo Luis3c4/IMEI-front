@@ -4,7 +4,7 @@ import { formatPrice, type Product } from "@/data/products";
 
 interface SelectedProductsListProps {
   products: Product[];
-  onRemoveProduct: (productId: number) => void;
+  onRemoveProduct: (productId: string) => void;
 }
 
 export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProductsListProps) => {
