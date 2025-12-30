@@ -58,13 +58,14 @@ const data = {
       isActive: true,
       items: [
         {
+          title: "IMEI Check",
+          url: "/imei-check",
+        },
+        {
           title: "Crear Recibo",
           url: "/factura",
         },
-        {
-          title: "Starred",
-          url: "#",
-        },
+        
         {
           title: "Settings",
           url: "#",

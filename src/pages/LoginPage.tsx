@@ -16,9 +16,9 @@ const LoginPage = () => {
 
   const { login, signup, isAuthenticated } = useAuth()
 
-  // Si ya está autenticado, redirige a home
+  // Si ya está autenticado, redirige a IMEI Check
   if (isAuthenticated) {
-    return <Navigate to="/" />
+    return <Navigate to="/imei-check" />
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -13,7 +13,7 @@ const handleAddProduct = (product: Product) => {
     setSelectedProducts((prev) => [...prev, product]);
   };
 
-  const handleRemoveProduct = (productId: string) => {
+  const handleRemoveProduct = (productId: number) => {
     setSelectedProducts((prev) => {
       const index = prev.findIndex((p) => p.id === productId);
       if (index !== -1) {
@@ -43,22 +43,7 @@ const handleAddProduct = (product: Product) => {
   const canGeneratePDF = selectedProducts.length > 0;
 
   return (
-    <div className="min-h-screen gradient-hero">
-      {/* Header */}
-      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shadow-glow">
-              <FileText className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">Cotizador iPhone</h1>
-              <p className="text-xs text-muted-foreground">Genera cotizaciones en PDF</p>
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-linear-to-br from-green-50 via-white to-blue-50">
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="space-y-6">

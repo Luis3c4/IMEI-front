@@ -6,9 +6,11 @@ interface HeaderProps {
   user: { name: string } | null;
   onLoginClick: () => void;
   onUserClick: () => void;
+  title?: string;
+  description?: string;
 }
 
-const Header = ({ user, onLoginClick, onUserClick }: HeaderProps) => {
+const Header = ({ user, onLoginClick, onUserClick, title = "IMEI Check", description = "Consultor de dispositivos" }: HeaderProps) => {
   return (
     <header className="sticky top-0 z-50 w-full py-2 px-4 animate-fade-in bg-background border-b">
       <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -20,9 +22,9 @@ const Header = ({ user, onLoginClick, onUserClick }: HeaderProps) => {
             <SidebarTrigger className="-ml-1" />
           </div>
           <div className="hidden sm:block">
-            <h1 className="text-xl font-bold text-foreground">IMEI Check</h1>
+            <h1 className="text-xl font-bold text-foreground">{title}</h1>
             <p className="text-xs text-muted-foreground">
-              Consultor de dispositivos
+              {description}
             </p>
           </div>
         </div>

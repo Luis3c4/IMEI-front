@@ -4,11 +4,11 @@ import { formatPrice, type Product } from "@/data/products";
 
 interface SelectedProductsListProps {
   products: Product[];
-  onRemoveProduct: (productId: string) => void;
+  onRemoveProduct: (productId: number) => void;
 }
 
 export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProductsListProps) => {
-  const total = products.reduce((sum, product) => sum + product.price, 0);
+  const total = products.reduce((sum, product) => sum + product.item_price, 0);
 
   if (products.length === 0) {
     return (
@@ -46,7 +46,7 @@ export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProd
             </div>
             <div className="flex items-center gap-4">
               <span className="font-semibold text-foreground">
-                {formatPrice(product.price)}
+                {formatPrice(product.item_price)}
               </span>
               <Button
                 variant="ghost"

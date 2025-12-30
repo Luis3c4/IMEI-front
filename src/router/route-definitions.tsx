@@ -2,7 +2,8 @@
 import { createRoute } from '@tanstack/react-router'
 import { rootRoute } from './root'
 import App from '../App'
-import  LoginPage  from '@/pages/LoginPage'
+import IMEICheck from '@/pages/IMEICheck'
+import LoginPage from '@/pages/LoginPage'
 import Factura from '@/pages/Factura'
 import { ProtectedLayout } from '@/components/ProtectedLayout'
 
@@ -26,7 +27,14 @@ export const FacturaRoute = createRoute({
   component: Factura,
 })
 
-// Ruta protegida: home
+// Ruta protegida: IMEI Check (predeterminada después de login)
+export const imeiCheckRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: '/imei-check',
+  component: IMEICheck,
+})
+
+// Ruta protegida: home (fallback)
 export const indexRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: '/',

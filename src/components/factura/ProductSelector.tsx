@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { iPhoneProducts, formatPrice, type Product } from "@/data/products";
+import { mockInvoice, formatPrice, type Product } from "@/data/products";
 
 interface ProductSelectorProps {
   onAddProduct: (product: Product) => void;
@@ -18,7 +18,7 @@ interface ProductSelectorProps {
 
 export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
-
+  const iPhoneProducts = mockInvoice.products;
   const groupedProducts = iPhoneProducts.reduce((acc, product) => {
     if (!acc[product.category]) {
       acc[product.category] = [];
@@ -27,7 +27,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
     return acc;
   }, {} as Record<string, Product[]>);
 
-  const isProductSelected = (productId: string) => {
+  const isProductSelected = (productId: number) => {
     return selectedProducts.some((p) => p.id === productId);
   };
 
@@ -72,7 +72,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                   <span className="font-medium text-foreground">{product.name}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-primary">
-                      {formatPrice(product.price)}
+                      {formatPrice(product.item_price)}
                     </span>
                     {!isSelected && (
                       <Plus className="h-4 w-4 text-muted-foreground" />

@@ -16,7 +16,7 @@ export default function Toast({ toast }: ToastProps) {
 
   return (
     <div
-      className={`fixed top-4 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg animate-pulse z-40`}
+      className={`fixed top-16 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg animate-pulse z-40`}
     >
       {toast.message}
     </div>
