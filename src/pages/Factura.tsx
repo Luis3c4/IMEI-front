@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { FileText, Sparkles } from "lucide-react";
+import { FileText, Sparkles, UserSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductSelector } from "@/components/factura/ProductSelector";
 import { SelectedProductsList } from "@/components/factura/SelectedProductsList";
 import { type Product } from "@/data/products";
 import { IMEIAPIService } from "@/services/api";
+import { DniSearch } from "@/components/factura/DniSearch";
 
 const Factura = () => {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
@@ -60,7 +61,16 @@ const handleAddProduct = (product: Product) => {
               Elige los iPhones que deseas incluir en tu cotización y genera un PDF profesional
             </p>
           </div>
-
+          {/* DNI Search Module */}
+          <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <UserSearch className="w-5 h-5 text-primary" />
+              <h3 className="text-sm font-medium text-foreground">
+                Consulta por DNI
+              </h3>
+            </div>
+            <DniSearch />
+          </div>
           {/* Product Selector Card */}
           <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-6">
             <div className="space-y-2">

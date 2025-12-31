@@ -109,6 +109,25 @@ class IMEIAPIServiceClass {
 
     return response.blob();
   }
+
+  async searchDni(dniNumber: string): Promise<{
+    first_name: string;
+    first_last_name: string;
+    second_last_name: string;
+    full_name: string;
+    document_number: string;
+  }> {
+    const response = await fetch(`${API_BASE}/api/reniec/dni?numero=${dniNumber}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Error al consultar el DNI");
+    }
+
+    return response.json();
+  }
 }
 
 export const IMEIAPIService = new IMEIAPIServiceClass();
