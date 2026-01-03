@@ -97,12 +97,20 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
             </DropdownMenuLabel>
             {grouped.map((product) => {
               const isSelected = isProductSelected(product.id);
+              const meta = [
+                product.capacity,
+                product.color,
+                product.serial_number ? `SN: ${product.serial_number}` : null,
+                typeof product.quantity === "number" ? `Stock: ${product.quantity}` : null,
+              ]
+                .filter(Boolean)
+                .join(" • ");
               return (
                 <DropdownMenuItem
                   key={product.id}
                   onClick={() => {
                     if (!isSelected) {
-                      onAddProduct(product);
+                      onAddProduct({ ...product, quantity_ordered: 1 });
                       setIsOpen(false);
                     }
                   }}
@@ -113,7 +121,12 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                       : 'hover:bg-secondary focus:bg-secondary'
                   }`}
                 >
-                  <span className="font-medium text-foreground">{product.name}</span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium text-foreground">{product.name}</span>
+                    {meta && (
+                      <span className="text-xs text-muted-foreground">{meta}</span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-primary">
                       {formatPrice(product.item_price)}

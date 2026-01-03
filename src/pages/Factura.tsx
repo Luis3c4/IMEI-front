@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { FileText, Sparkles } from "lucide-react";
+import { FileText, Sparkles, UserSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductSelector } from "@/components/factura/ProductSelector";
 import { SelectedProductsList } from "@/components/factura/SelectedProductsList";
 import { type Product } from "@/data/products";
 import { IMEIAPIService } from "@/services/api";
+import { DniSearch } from "@/components/factura/DniSearch";
 
 const Factura = () => {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
 
-const handleAddProduct = (product: Product) => {
-    setSelectedProducts((prev) => [...prev, product]);
+  const handleAddProduct = (product: Product) => {
+    setSelectedProducts((prev) => [...prev, { ...product, quantity_ordered: 1 }]);
   };
 
   const handleRemoveProduct = (productId: string) => {
@@ -23,6 +24,19 @@ const handleAddProduct = (product: Product) => {
       }
       return prev;
     });
+  };
+
+  const handleQuantityChange = (productId: string, nextQty: number) => {
+    setSelectedProducts((prev) =>
+      prev.map((p) => {
+        if (p.id !== productId) return p;
+        const stock = typeof p.quantity === "number" ? p.quantity : undefined;
+        const min = 1;
+        const max = typeof stock === "number" ? stock : 99;
+        const clamped = Math.max(min, Math.min(max, nextQty));
+        return { ...p, quantity_ordered: clamped };
+      })
+    );
   };
 
   const handleGeneratePDF = () => {
@@ -94,7 +108,16 @@ const handleAddProduct = (product: Product) => {
               Elige los iPhones que deseas incluir en tu cotización y genera un PDF profesional
             </p>
           </div>
-
+          {/* DNI Search Module */}
+          <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <UserSearch className="w-5 h-5 text-primary" />
+              <h3 className="text-sm font-medium text-foreground">
+                Consulta por DNI
+              </h3>
+            </div>
+            <DniSearch />
+          </div>
           {/* Product Selector Card */}
           <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-6">
             <div className="space-y-2">
@@ -114,6 +137,7 @@ const handleAddProduct = (product: Product) => {
               <SelectedProductsList
                 products={selectedProducts}
                 onRemoveProduct={handleRemoveProduct}
+                onQuantityChange={handleQuantityChange}
               />
             </div>
 

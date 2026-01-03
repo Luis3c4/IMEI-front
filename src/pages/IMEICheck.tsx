@@ -67,7 +67,8 @@ export default function IMEICheck() {
 
       setStats(statsData);
       setBalance(balanceData);
-      setServices(servicesData);
+      setServices(servicesData?.services || []);
+      console.log("Servicios cargados:", servicesData);
     } catch (err) {
       console.error("Error al cargar datos iniciales:", err);
       showToast("Error al cargar datos", "error");
@@ -93,7 +94,7 @@ export default function IMEICheck() {
       );
       setResult(deviceInfo);
       setInputValue("");
-      showToast("✅ Dispositivo encontrado", "success");
+      showToast("Dispositivo encontrado", "success");
 
       // Recargar datos después de consulta
       await loadInitialData();
