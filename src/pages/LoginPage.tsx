@@ -12,6 +12,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   const { login, signup, isAuthenticated } = useAuth()
@@ -24,6 +25,7 @@ const LoginPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccessMessage('')
     setIsLoading(true)
 
     try {
@@ -33,7 +35,13 @@ const LoginPage = () => {
           setIsLoading(false)
           return
         }
-        await signup(name, email, password)
+        const response = await signup(name, email, password)
+        setSuccessMessage(response.message)
+        // Limpiar formulario pero mantener la vista de login
+        setName('')
+        setEmail('')
+        setPassword('')
+        setIsSignUp(false)
       } else {
         if (!email.trim() || !password.trim()) {
           setError('Por favor ingresa tu email y contraseña')
@@ -41,9 +49,8 @@ const LoginPage = () => {
           return
         }
         await login(email, password)
+        // El redirect sucede automáticamente después del login exitoso
       }
-
-      // El redirect sucede automáticamente después del login exitoso
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error en autenticación')
     } finally {
@@ -83,6 +90,14 @@ const LoginPage = () => {
               <div className="mb-6 p-4 bg-red-950 border border-red-900 text-red-300 rounded-lg flex items-start gap-3">
                 <div className="flex-1">
                   <p className="text-sm font-medium">{error}</p>
+                </div>
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="mb-6 p-4 bg-green-950 border border-green-900 text-green-300 rounded-lg flex items-start gap-3">
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{successMessage}</p>
                 </div>
               </div>
             )}
@@ -174,7 +189,7 @@ const LoginPage = () => {
                 {isSignUp ? 'Inicia sesión aquí' : 'Regístrate aquí'}
               </button>
               <p className="text-center text-slate-500 text-xs mt-4">
-                Demo: email: <span className="text-slate-300">admin</span>, contraseña: <span className="text-slate-300">admin</span>
+                Usa credenciales registradas en Supabase para iniciar sesión
               </p>
             </div>
           </div>

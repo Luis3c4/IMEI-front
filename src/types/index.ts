@@ -37,7 +37,14 @@ export interface Service {
   name: string;
   price: string;
 }
+export interface ServiceResponse {
+  error: string;
+  meessage: string;
+  services: Service[];
+  success: boolean;
+  total: number;
 
+}
 export interface LastOrderInfo {
   precio: number;
   order_id: string;

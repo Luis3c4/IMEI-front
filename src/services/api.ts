@@ -2,8 +2,7 @@
 
 import { API_BASE } from "../utils/constants";
 import type { Product } from "../data/products";
-import type { DeviceInfo, Stats, Service, LastOrderInfo } from "../types";
-import type { ProductAPIResponse } from "@/schemas/apiResponseType";
+import type { DeviceInfo, Stats, LastOrderInfo, ServiceResponse } from "../types";
 
 class IMEIAPIServiceClass {
   async checkDevice(
@@ -54,30 +53,76 @@ class IMEIAPIServiceClass {
 
     const payload = await response.json();
 
-    if (payload?.success === false) {
+    if (!payload?.success || !Array.isArray(payload?.data)) {
       throw new Error(payload?.error || "Error al cargar productos");
     }
 
-    const rawProducts = Array.isArray(payload?.data) ? payload.data : [];
+    const normalizedProducts = payload.data.flatMap((item: any) => {
+      const variants = Array.isArray(item?.product_variants)
+        ? item.product_variants
+        : [];
 
-    return rawProducts.map((item: ProductAPIResponse) => ({
-      id: item.id?.toString() ?? "",
-      name: item.name ?? "Producto",
-      product_number: item.product_number ?? "",
-      serial_number: item.serial_number ?? "",
-      item_price: Number(item.item_price ?? 0),
-      quantity: item.quantity,
-      category: item.category ?? "Sin categoría",
-    })) as Product[];
+      if (variants.length === 0) {
+        return [
+          {
+            id: item?.id?.toString() ?? "",
+            base_product_id: item?.id?.toString() ?? "",
+            name: item?.name ?? "Producto",
+            product_number: "",
+            serial_number: "",
+            item_price: 0,
+            quantity: 0,
+            category: item?.category ?? "Sin categoría",
+            description: item?.description ?? "",
+          },
+        ];
+      }
+
+      return variants.map((variant: any) => ({
+        id:
+          variant?.id?.toString() ||
+          `${item?.id ?? "product"}-${variant?.serial_number ?? "variant"}`,
+        base_product_id: item?.id?.toString() ?? "",
+        variant_id: variant?.id?.toString(),
+        name: item?.name ?? "Producto",
+        product_number: variant?.serial_number ?? "",
+        serial_number: variant?.serial_number ?? "",
+        item_price: Number(variant?.price ?? 0),
+        quantity:
+          typeof variant?.quantity === "number" ? variant.quantity : undefined,
+        category: item?.category ?? "Sin categoría",
+        description: item?.description ?? "",
+        color: variant?.color ?? undefined,
+        capacity: variant?.capacity ?? undefined,
+      }));
+    });
+
+    if (normalizedProducts.length === 0) {
+      throw new Error("No se encontraron productos");
+    }
+
+    return normalizedProducts as Product[];
   }
 
-  async getServices(): Promise<Service[]> {
+  async getServices(): Promise<ServiceResponse> {
     try {
       const response = await fetch(`${API_BASE}/api/devices/services`);
-      if (!response.ok) return [];
+      if (!response.ok) return {
+        error: "true",
+        meessage: "error en la respuesta",
+        services: [],
+        success: false,
+        total: 0,
+      };
       return response.json();
     } catch {
-      return [];
+      return {
+        error: "true",
+        meessage: "Error al cargar servicios",
+        services: [],
+        success: false,
+        total: 0,
+      };
     }
   }
 

@@ -6,6 +6,11 @@ export interface Product {
   serial_number: string;
   item_price: number;
   quantity?: number;
+  capacity?: string;
+  color?: string;
+  description?: string;
+  base_product_id?: string;
+  variant_id?: string;
   quantity_ordered?: number;
   quantity_fulfilled?: number;
   extended_price?: number;

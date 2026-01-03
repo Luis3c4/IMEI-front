@@ -10,8 +10,8 @@ import { DniSearch } from "@/components/factura/DniSearch";
 const Factura = () => {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
 
-const handleAddProduct = (product: Product) => {
-    setSelectedProducts((prev) => [...prev, product]);
+  const handleAddProduct = (product: Product) => {
+    setSelectedProducts((prev) => [...prev, { ...product, quantity_ordered: 1 }]);
   };
 
   const handleRemoveProduct = (productId: string) => {
@@ -24,6 +24,19 @@ const handleAddProduct = (product: Product) => {
       }
       return prev;
     });
+  };
+
+  const handleQuantityChange = (productId: string, nextQty: number) => {
+    setSelectedProducts((prev) =>
+      prev.map((p) => {
+        if (p.id !== productId) return p;
+        const stock = typeof p.quantity === "number" ? p.quantity : undefined;
+        const min = 1;
+        const max = typeof stock === "number" ? stock : 99;
+        const clamped = Math.max(min, Math.min(max, nextQty));
+        return { ...p, quantity_ordered: clamped };
+      })
+    );
   };
 
   const handleGeneratePDF = () => {
@@ -90,6 +103,7 @@ const handleAddProduct = (product: Product) => {
               <SelectedProductsList
                 products={selectedProducts}
                 onRemoveProduct={handleRemoveProduct}
+                onQuantityChange={handleQuantityChange}
               />
             </div>
 

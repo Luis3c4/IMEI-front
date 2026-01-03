@@ -96,7 +96,7 @@ export const DniSearch = () => {
           
           <div className="grid gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide min-w-[100px]">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide min-w-25">
                 Nombre completo
               </span>
               <span className="text-sm font-medium text-foreground">
@@ -105,7 +105,7 @@ export const DniSearch = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide min-w-[100px]">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide min-w-25">
                 DNI
               </span>
               <span className="text-sm font-medium text-foreground font-mono">

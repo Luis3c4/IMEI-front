@@ -1,14 +1,18 @@
-import { Trash2, Smartphone } from "lucide-react";
+import { Trash2, Smartphone, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice, type Product } from "@/data/products";
 
 interface SelectedProductsListProps {
   products: Product[];
   onRemoveProduct: (productId: string) => void;
+  onQuantityChange: (productId: string, quantity: number) => void;
 }
 
-export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProductsListProps) => {
-  const total = products.reduce((sum, product) => sum + product.item_price, 0);
+export const SelectedProductsList = ({ products, onRemoveProduct, onQuantityChange }: SelectedProductsListProps) => {
+  const total = products.reduce((sum, product) => {
+    const qty = product.quantity_ordered ?? 1;
+    return sum + product.item_price * qty;
+  }, 0);
 
   if (products.length === 0) {
     return (
@@ -29,36 +33,83 @@ export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProd
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        {products.map((product, index) => (
-          <div
-            key={`${product.id}-${index}`}
-            className="flex items-center justify-between p-4 bg-card rounded-xl border border-border shadow-card animate-fade-in hover:shadow-elevated transition-all duration-200"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-                <Smartphone className="w-5 h-5 text-primary" />
+        {products.map((product, index) => {
+          const qty = product.quantity_ordered ?? 1;
+          const stock = typeof product.quantity === "number" ? product.quantity : undefined;
+          const canDecrement = qty > 1;
+          const canIncrement = typeof stock === "number" ? qty < stock : true;
+
+          return (
+            <div
+              key={`${product.id}-${index}`}
+              className="flex items-center justify-between p-4 bg-card rounded-xl border border-border shadow-card animate-fade-in hover:shadow-elevated transition-all duration-200"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                  <Smartphone className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">{product.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[
+                      product.category,
+                      product.capacity,
+                      product.color,
+                      product.serial_number ? `SN: ${product.serial_number}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" • ")}
+                  </p>
+                  {typeof stock === "number" && (
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">Stock: {stock}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="font-medium text-foreground">{product.name}</p>
-                <p className="text-xs text-muted-foreground">{product.category}</p>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-2 py-1.5 border border-border">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onQuantityChange(product.id, qty - 1)}
+                    disabled={!canDecrement}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <div className="min-w-10 text-center text-sm font-semibold text-foreground">{qty}</div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => onQuantityChange(product.id, qty + 1)}
+                    disabled={!canIncrement}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="font-semibold text-foreground">
+                    {formatPrice(product.item_price * qty)}
+                  </span>
+                  {qty > 1 && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {formatPrice(product.item_price)} c/u
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onRemoveProduct(product.id)}
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="font-semibold text-foreground">
-                {formatPrice(product.item_price)}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onRemoveProduct(product.id)}
-                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-border">
