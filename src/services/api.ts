@@ -78,23 +78,46 @@ class IMEIAPIServiceClass {
         ];
       }
 
-      return variants.map((variant: any) => ({
-        id:
-          variant?.id?.toString() ||
-          `${item?.id ?? "product"}-${variant?.serial_number ?? "variant"}`,
-        base_product_id: item?.id?.toString() ?? "",
-        variant_id: variant?.id?.toString(),
-        name: item?.name ?? "Producto",
-        product_number: variant?.serial_number ?? "",
-        serial_number: variant?.serial_number ?? "",
-        item_price: Number(variant?.price ?? 0),
-        quantity:
-          typeof variant?.quantity === "number" ? variant.quantity : undefined,
-        category: item?.category ?? "Sin categoría",
-        description: item?.description ?? "",
-        color: variant?.color ?? undefined,
-        capacity: variant?.capacity ?? undefined,
-      }));
+      return variants.flatMap((variant: any) => {
+        const productItems = Array.isArray(variant?.product_items)
+          ? variant.product_items
+          : [];
+
+        // Si hay product_items, crear un producto por cada item
+        if (productItems.length > 0) {
+          return productItems.map((productItem: any) => ({
+            id: productItem?.id?.toString() ?? "",
+            base_product_id: item?.id?.toString() ?? "",
+            variant_id: variant?.id?.toString(),
+            name: item?.name ?? "Producto",
+            product_number: productItem?.serial_number ?? "",
+            serial_number: productItem?.serial_number ?? "",
+            item_price: Number(variant?.price ?? 0),
+            quantity: 1,
+            category: item?.category ?? "Sin categoría",
+            description: item?.description ?? "",
+            color: variant?.color ?? undefined,
+            capacity: variant?.capacity ?? undefined,
+            status: productItem?.status ?? "available",
+          }));
+        }
+
+        // Si no hay product_items, crear un producto con la cantidad del variant
+        return [{
+          id: variant?.id?.toString() ?? "",
+          base_product_id: item?.id?.toString() ?? "",
+          variant_id: variant?.id?.toString(),
+          name: item?.name ?? "Producto",
+          product_number: "",
+          serial_number: "",
+          item_price: Number(variant?.price ?? 0),
+          quantity: typeof variant?.quantity === "number" ? variant.quantity : 0,
+          category: item?.category ?? "Sin categoría",
+          description: item?.description ?? "",
+          color: variant?.color ?? undefined,
+          capacity: variant?.capacity ?? undefined,
+        }];
+      });
     });
 
     if (normalizedProducts.length === 0) {

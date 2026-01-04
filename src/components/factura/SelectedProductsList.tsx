@@ -1,14 +1,13 @@
-import { Trash2, Smartphone, Minus, Plus } from "lucide-react";
+import { Trash2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice, type Product } from "@/data/products";
 
 interface SelectedProductsListProps {
   products: Product[];
   onRemoveProduct: (productId: string) => void;
-  onQuantityChange: (productId: string, quantity: number) => void;
 }
 
-export const SelectedProductsList = ({ products, onRemoveProduct, onQuantityChange }: SelectedProductsListProps) => {
+export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProductsListProps) => {
   const total = products.reduce((sum, product) => {
     const qty = product.quantity_ordered ?? 1;
     return sum + product.item_price * qty;
@@ -36,8 +35,6 @@ export const SelectedProductsList = ({ products, onRemoveProduct, onQuantityChan
         {products.map((product, index) => {
           const qty = product.quantity_ordered ?? 1;
           const stock = typeof product.quantity === "number" ? product.quantity : undefined;
-          const canDecrement = qty > 1;
-          const canIncrement = typeof stock === "number" ? qty < stock : true;
 
           return (
             <div
@@ -64,30 +61,12 @@ export const SelectedProductsList = ({ products, onRemoveProduct, onQuantityChan
                   {typeof stock === "number" && (
                     <p className="text-[11px] text-muted-foreground/80 mt-0.5">Stock: {stock}</p>
                   )}
+                  {qty > 1 && (
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">Cantidad seleccionada: {qty}</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-2 py-1.5 border border-border">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => onQuantityChange(product.id, qty - 1)}
-                    disabled={!canDecrement}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <div className="min-w-10 text-center text-sm font-semibold text-foreground">{qty}</div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => onQuantityChange(product.id, qty + 1)}
-                    disabled={!canIncrement}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
                 <div className="flex flex-col items-end">
                   <span className="font-semibold text-foreground">
                     {formatPrice(product.item_price * qty)}

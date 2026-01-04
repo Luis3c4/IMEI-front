@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Sparkles, UserSearch } from "lucide-react";
+import { FileText, Sparkles, UserSearch, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductSelector } from "@/components/factura/ProductSelector";
 import { SelectedProductsList } from "@/components/factura/SelectedProductsList";
@@ -24,19 +24,6 @@ const Factura = () => {
       }
       return prev;
     });
-  };
-
-  const handleQuantityChange = (productId: string, nextQty: number) => {
-    setSelectedProducts((prev) =>
-      prev.map((p) => {
-        if (p.id !== productId) return p;
-        const stock = typeof p.quantity === "number" ? p.quantity : undefined;
-        const min = 1;
-        const max = typeof stock === "number" ? stock : 99;
-        const clamped = Math.max(min, Math.min(max, nextQty));
-        return { ...p, quantity_ordered: clamped };
-      })
-    );
   };
 
   const handleGeneratePDF = () => {
@@ -91,53 +78,90 @@ const Factura = () => {
   const canGeneratePDF = selectedProducts.length > 0;
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-green-50 via-white to-blue-50">
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="space-y-6">
-          {/* Hero Section */}
-          <div className="text-center space-y-2 py-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-              <Sparkles className="w-4 h-4" />
-              Sistema de Cotización
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Header */}
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold text-foreground">
+                  Sistema de Cotizaciones
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Genera cotizaciones profesionales
+                </p>
+              </div>
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-              Selecciona tus productos
-            </h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Elige los iPhones que deseas incluir en tu cotización y genera un PDF profesional
-            </p>
-          </div>
-          {/* DNI Search Module */}
-          <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">
             <div className="flex items-center gap-2">
-              <UserSearch className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-medium text-foreground">
-                Consulta por DNI
-              </h3>
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-sm text-muted-foreground">v1.0</span>
             </div>
-            <DniSearch />
           </div>
-          {/* Product Selector Card */}
-          <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Agregar producto
-              </label>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column */}
+          <div className="space-y-6">
+            {/* Info Banner */}
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <FileText className="w-4 h-4 text-primary" />
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Selecciona los productos iPhone para tu cotización. Consulta el DNI del cliente y genera un PDF profesional.
+              </p>
+            </div>
+
+            {/* DNI Search Module */}
+            <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <UserSearch className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-medium text-foreground">
+                  Consulta por DNI
+                </h3>
+              </div>
+              <DniSearch />
+            </div>
+
+            {/* Product Selector Card */}
+            <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-medium text-foreground">
+                  Agregar productos
+                </h3>
+              </div>
               <ProductSelector
                 onAddProduct={handleAddProduct}
                 selectedProducts={selectedProducts}
               />
             </div>
+          </div>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-foreground">
-                Productos seleccionados
-              </h3>
+          {/* Right Column */}
+          <div className="space-y-6">
+            {/* Selected Products Card */}
+            <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-foreground">
+                  Productos seleccionados
+                </h3>
+                {selectedProducts.length > 0 && (
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                    {selectedProducts.length} {selectedProducts.length === 1 ? "item" : "items"}
+                  </span>
+                )}
+              </div>
               <SelectedProductsList
                 products={selectedProducts}
                 onRemoveProduct={handleRemoveProduct}
-                onQuantityChange={handleQuantityChange}
               />
             </div>
 
@@ -149,19 +173,27 @@ const Factura = () => {
               disabled={!canGeneratePDF}
               onClick={handleGeneratePDF}
             >
-              <FileText className="w-5 h-5" />
-              {canGeneratePDF
-                ? "Generar PDF"
-                : "Selecciona productos para continuar"}
+              <FileText className="w-5 h-5 mr-2" />
+              Generar PDF de Cotización
             </Button>
-          </div>
 
-          {/* Footer Note */}
-          <p className="text-center text-xs text-muted-foreground">
+            {!canGeneratePDF && (
+              <p className="text-xs text-muted-foreground text-center">
+                Agrega al menos un producto para generar el PDF
+              </p>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border/50 mt-auto">
+        <div className="container mx-auto px-4 py-4">
+          <p className="text-xs text-muted-foreground text-center">
             Los precios están en USD y pueden variar según disponibilidad
           </p>
         </div>
-      </main>
+      </footer>
     </div>
   );
 };
