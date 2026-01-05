@@ -1,43 +1,62 @@
-// Hook personalizado para estadísticas y datos globales
+// Hook personalizado para estadísticas y datos globales apoyado en TanStack Query
 
-import { useState, useEffect } from "react";
-import type { Stats, LastOrderInfo } from "../types";
-import { IMEIAPIService } from "../services/api";
+import { useEffect, useRef } from "react";
+import type { Stats } from "../types";
+import {
+  useBalance,
+  useLastOrder,
+  useStats as useStatsQuery,
+} from "../services/api-query";
 
 export function useStats(onShowToast: (message: string, type: string) => void) {
-  const [stats, setStats] = useState<Stats>({
+  const statsQuery = useStatsQuery({ retry: 1 });
+  const balanceQuery = useBalance({ retry: 1 });
+  const lastOrderQuery = useLastOrder({ retry: 1 });
+
+  // Mostrar toast si hay error en cualquiera de las queries
+  const errorShownRef = useRef(false);
+
+  useEffect(() => {
+  const hasError =
+    statsQuery.isError ||
+    balanceQuery.isError ||
+    lastOrderQuery.isError;
+
+  if (hasError && !errorShownRef.current) {
+    onShowToast("Error al cargar datos", "error");
+    errorShownRef.current = true;
+  }
+
+  if (!hasError) {
+    errorShownRef.current = false;
+  }
+}, [
+  statsQuery.isError,
+  balanceQuery.isError,
+  lastOrderQuery.isError,
+  onShowToast,
+]);
+  const loadingServices =
+    statsQuery.isLoading || balanceQuery.isLoading || lastOrderQuery.isLoading;
+
+  const reloadData = () =>
+    Promise.all([
+      statsQuery.refetch(),
+      balanceQuery.refetch(),
+      lastOrderQuery.refetch(),
+    ]);
+
+  const defaultStats: Stats = {
     total_consultas: 0,
     sheet_existe: false,
     sheet_url: "",
-  });
-  const [balance, setBalance] = useState<number | null>(null);
-  const [lastOrderInfo, setLastOrderInfo] = useState<LastOrderInfo | null>(null);
-  const [loadingServices, setLoadingServices] = useState(false);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoadingServices(true);
-      
-      const [statsData, balanceData, orderData] = await Promise.all([
-        IMEIAPIService.getStats(),
-        IMEIAPIService.getBalance(),
-        IMEIAPIService.getLastOrder(),
-      ]);
-
-      setStats(statsData);
-      setBalance(balanceData);
-      setLastOrderInfo(orderData);
-    } catch (error) {
-      console.error("Error al cargar datos:", error);
-      onShowToast("Error al cargar datos", "error");
-    } finally {
-      setLoadingServices(false);
-    }
   };
 
-  return { stats, balance, lastOrderInfo, loadingServices, reloadData: loadData };
+  return {
+    stats: statsQuery.data ?? defaultStats,
+    balance: balanceQuery.data ?? null,
+    lastOrderInfo: lastOrderQuery.data ?? null,
+    loadingServices,
+    reloadData,
+  };
 }

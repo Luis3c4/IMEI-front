@@ -3,20 +3,29 @@ import { FileText, Sparkles, UserSearch, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductSelector } from "@/components/factura/ProductSelector";
 import { SelectedProductsList } from "@/components/factura/SelectedProductsList";
-import { type Product } from "@/data/products";
-import { IMEIAPIService } from "@/services/api";
+import type { ProductVariant } from "@/types/productsType";
 import { DniSearch } from "@/components/factura/DniSearch";
+import { useInvoiceTestPdfPreview } from "@/services/api-query";
+
+// Tipo extendido para incluir información del producto base
+interface SelectedProduct extends ProductVariant {
+  baseProductId: number;
+  baseProductName: string;
+  category: string;
+  description: string;
+}
 
 const Factura = () => {
-  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
+  const { mutateAsync: generateInvoiceTestPdf, isPending: isGeneratingPdf } = useInvoiceTestPdfPreview();
 
-  const handleAddProduct = (product: Product) => {
-    setSelectedProducts((prev) => [...prev, { ...product, quantity_ordered: 1 }]);
+  const handleAddProduct = (product: SelectedProduct) => {
+    setSelectedProducts((prev) => [...prev, { ...product, quantity: 1 }]);
   };
 
   const handleRemoveProduct = (productId: string) => {
     setSelectedProducts((prev) => {
-      const index = prev.findIndex((p) => p.id === productId);
+      const index = prev.findIndex((p) => p.id.toString() === productId);
       if (index !== -1) {
         const newProducts = [...prev];
         newProducts.splice(index, 1);
@@ -26,7 +35,7 @@ const Factura = () => {
     });
   };
 
-  const handleGeneratePDF = () => {
+  const handleGeneratePDF = async () => {
     // Crear el body con la estructura de Invoice
   const invoiceBody = {
     order_date: new Date().toLocaleDateString("en-US", { 
@@ -40,13 +49,13 @@ const Factura = () => {
       customer_number: "900007" // Dato estático por ahora
     },
     products: selectedProducts.map((product) => ({
-      name: product.name,
-      product_number: product.id, // Usando el id como product_number
-      serial_number: `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`, // Serial generado
-      item_price: product.item_price,
+      name: product.baseProductName,
+      product_number: product.id.toString(),
+      serial_number: product.serial_numbers?.[0] || `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
+      item_price: product.price,
       quantity_ordered: 1,
       quantity_fulfilled: 1,
-      extended_price: product.item_price,
+      extended_price: product.price,
     })),
     invoice_info: {
       invoice_number: `MA${Date.now().toString().slice(-8)}`, // Generar número único
@@ -62,29 +71,26 @@ const Factura = () => {
   console.log("Body para enviar al backend:", JSON.stringify(invoiceBody, null, 2));
   console.log("Objeto invoice:", invoiceBody);
 
-     // Generar/abrir preview de PDF al agregar producto
-    IMEIAPIService.getInvoiceTestPdfPreview()
-      .then((pdfBlob) => {
-        const url = URL.createObjectURL(pdfBlob);
-        window.open(url, "_blank");
-        // Limpieza opcional: revocar URL tras unos segundos
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      })
-      .catch((err) => {
-        console.error("Error generando PDF:", err);
-      }); 
+    try {
+      const pdfBlob = await generateInvoiceTestPdf();
+      const url = URL.createObjectURL(pdfBlob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      console.error("Error generando PDF:", err);
+    }
   };
 
   const canGeneratePDF = selectedProducts.length > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary to-primary/80 flex items-center justify-center">
                 <FileText className="w-5 h-5 text-primary-foreground" />
               </div>
               <div>
@@ -111,7 +117,7 @@ const Factura = () => {
           <div className="space-y-6">
             {/* Info Banner */}
             <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <FileText className="w-4 h-4 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -170,11 +176,11 @@ const Factura = () => {
               variant="generate"
               size="lg"
               className="w-full"
-              disabled={!canGeneratePDF}
+              disabled={!canGeneratePDF || isGeneratingPdf}
               onClick={handleGeneratePDF}
             >
               <FileText className="w-5 h-5 mr-2" />
-              Generar PDF de Cotización
+              {isGeneratingPdf ? "Generando..." : "Generar PDF de Cotización"}
             </Button>
 
             {!canGeneratePDF && (

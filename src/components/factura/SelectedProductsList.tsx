@@ -1,16 +1,25 @@
 import { Trash2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatPrice, type Product } from "@/data/products";
+import { formatPrice } from "@/helper/products";
+import type { ProductVariant } from "@/types/productsType";
+
+// Tipo extendido para incluir información del producto base
+interface SelectedProduct extends ProductVariant {
+  baseProductId: number;
+  baseProductName: string;
+  category: string;
+  description: string;
+}
 
 interface SelectedProductsListProps {
-  products: Product[];
+  products: SelectedProduct[];
   onRemoveProduct: (productId: string) => void;
 }
 
 export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProductsListProps) => {
   const total = products.reduce((sum, product) => {
-    const qty = product.quantity_ordered ?? 1;
-    return sum + product.item_price * qty;
+    const qty = product.quantity ?? 1;
+    return sum + product.price * qty;
   }, 0);
 
   if (products.length === 0) {
@@ -33,8 +42,8 @@ export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProd
     <div className="space-y-3">
       <div className="space-y-2">
         {products.map((product, index) => {
-          const qty = product.quantity_ordered ?? 1;
-          const stock = typeof product.quantity === "number" ? product.quantity : undefined;
+          const qty = product.quantity ?? 1;
+          const serialNumber = product.serial_numbers?.[0] || '';
 
           return (
             <div
@@ -47,20 +56,17 @@ export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProd
                   <Smartphone className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">{product.name}</p>
+                  <p className="font-medium text-foreground">{product.baseProductName}</p>
                   <p className="text-xs text-muted-foreground">
                     {[
                       product.category,
                       product.capacity,
                       product.color,
-                      product.serial_number ? `SN: ${product.serial_number}` : null,
+                      serialNumber ? `SN: ${serialNumber}` : null,
                     ]
                       .filter(Boolean)
                       .join(" • ")}
                   </p>
-                  {typeof stock === "number" && (
-                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">Stock: {stock}</p>
-                  )}
                   {qty > 1 && (
                     <p className="text-[11px] text-muted-foreground/80 mt-0.5">Cantidad seleccionada: {qty}</p>
                   )}
@@ -69,18 +75,18 @@ export const SelectedProductsList = ({ products, onRemoveProduct }: SelectedProd
               <div className="flex items-center gap-3">
                 <div className="flex flex-col items-end">
                   <span className="font-semibold text-foreground">
-                    {formatPrice(product.item_price * qty)}
+                    {formatPrice(product.price * qty)}
                   </span>
                   {qty > 1 && (
                     <span className="text-[11px] text-muted-foreground">
-                      {formatPrice(product.item_price)} c/u
+                      {formatPrice(product.price)} c/u
                     </span>
                   )}
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => onRemoveProduct(product.id)}
+                  onClick={() => onRemoveProduct(product.id.toString())}
                   className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                 >
                   <Trash2 className="h-4 w-4" />

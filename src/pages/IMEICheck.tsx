@@ -11,35 +11,51 @@ import { ScanBarcode } from "lucide-react";
 import Scanner from "../components/Scanner";
 import Toast from "../components/Toast";
 import InfoCard from "../components/InfoCard";
-import { IMEIAPIService } from "../services/api";
 import type { ToastState, DeviceInfo, Stats, Service } from "../types";
 import { TOAST_DURATION } from "../utils/constants";
+import {
+  useBalance,
+  useCheckDevice,
+  useServices,
+  useStats as useStatsQuery,
+} from "../services/api-query";
 
 export default function IMEICheck() {
   // Estados principales
   const [serviceId, setServiceId] = useState("17");
   const [inputValue, setInputValue] = useState("");
-  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DeviceInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const {
+    data: statsData,
+    error: statsError,
+    refetch: refetchStats,
+  } = useStatsQuery({ retry: 1 });
 
-  // Estados de datos globales
-  const [stats, setStats] = useState<Stats>({
+  const {
+    data: balanceData,
+    error: balanceError,
+    refetch: refetchBalance,
+  } = useBalance({ retry: 1 });
+
+  const {
+    data: servicesResponse,
+    isLoading: servicesLoading,
+    isFetching: servicesFetching,
+    error: servicesError,
+    refetch: refetchServices,
+  } = useServices({ retry: 1 });
+
+  const stats: Stats = statsData ?? {
     total_consultas: 0,
     sheet_existe: false,
     sheet_url: "",
-  });
-  const [balance, setBalance] = useState<number | null>(null);
-  const [services, setServices] = useState<Service[]>([]);
-  const [loadingServices, setLoadingServices] = useState(false);
-
-  // Cargar datos al montar
-  useEffect(() => {
-    loadInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
+  const balance = balanceData ?? null;
+  const services: Service[] = servicesResponse?.services ?? [];
+  const loadingServices = servicesLoading || servicesFetching;
 
   // Bloquear scroll cuando el scanner está abierto
   useEffect(() => {
@@ -56,26 +72,35 @@ export default function IMEICheck() {
     setTimeout(() => setToast(null), TOAST_DURATION);
   };
 
-  const loadInitialData = async () => {
-    try {
-      setLoadingServices(true);
-      const [statsData, balanceData, servicesData] = await Promise.all([
-        IMEIAPIService.getStats(),
-        IMEIAPIService.getBalance(),
-        IMEIAPIService.getServices(),
-      ]);
+  const refreshData = () =>
+    Promise.all([refetchStats(), refetchBalance(), refetchServices()]);
 
-      setStats(statsData);
-      setBalance(balanceData);
-      setServices(servicesData?.services || []);
-      console.log("Servicios cargados:", servicesData);
-    } catch (err) {
-      console.error("Error al cargar datos iniciales:", err);
+  const { mutateAsync: runCheckDevice, isPending: isChecking } = useCheckDevice({
+    onSuccess: async (deviceInfo) => {
+      setResult(deviceInfo);                      
+      setInputValue("");
+      showToast("Dispositivo encontrado", "success");
+      await refreshData();
+    },
+    onError: (err) => {
+      const errorMessage =
+        err instanceof Error ? err.message : "Error al verificar el dispositivo";
+      setError(errorMessage);
+      showToast(errorMessage, "error");
+    },
+  });
+
+  useEffect(() => {
+    if (statsError || balanceError || servicesError) {
       showToast("Error al cargar datos", "error");
-    } finally {
-      setLoadingServices(false);
     }
-  };
+  }, [statsError, balanceError, servicesError]);
+
+  useEffect(() => {
+    if (services.length > 0 && !services.some((svc) => svc.service === serviceId)) {
+      setServiceId(services[0].service);
+    }
+  }, [services, serviceId]);
 
   const handleConsultar = async () => {
     if (!inputValue.trim()) {
@@ -83,29 +108,10 @@ export default function IMEICheck() {
       return;
     }
 
-    setLoading(true);
     setError(null);
     setResult(null);
 
-    try {
-      const deviceInfo = await IMEIAPIService.checkDevice(
-        inputValue,
-        serviceId
-      );
-      setResult(deviceInfo);
-      setInputValue("");
-      showToast("Dispositivo encontrado", "success");
-
-      // Recargar datos después de consulta
-      await loadInitialData();
-    } catch (err) {
-      const errorMessage =
-        (err as Error)?.message || "Error al verificar el dispositivo";
-      setError(errorMessage);
-      showToast(errorMessage, "error");
-    } finally {
-      setLoading(false);
-    }
+    await runCheckDevice({ code: inputValue, serviceId });
   };
 
   const handleAbrirSheet = () => {
@@ -246,10 +252,10 @@ export default function IMEICheck() {
                 {/* Botón Consultar */}
                 <button
                   onClick={handleConsultar}
-                  disabled={loading || !inputValue}
+                  disabled={isChecking || !inputValue}
                   className="w-full bg-linear-to-r from-green-600 to-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                 >
-                  {loading ? (
+                  {isChecking ? (
                     <>
                       <Loader2 className="animate-spin" size={20} />
                       Consultando...
@@ -317,7 +323,7 @@ export default function IMEICheck() {
               </h2>
 
               {/* Estado Vacío */}
-              {!loading && !result && !error && (
+              {!isChecking && !result && !error && (
                 <div className="flex flex-col items-center justify-center h-96 text-gray-400">
                   <Search size={64} className="mb-4 opacity-50" />
                   <p className="text-lg">No hay consultas realizadas aún</p>
@@ -342,7 +348,7 @@ export default function IMEICheck() {
               )}
 
               {/* Estado Loading */}
-              {loading && (
+              {isChecking && (
                 <div className="flex flex-col items-center justify-center h-96">
                   <Loader2
                     className="animate-spin text-green-600 mb-4"

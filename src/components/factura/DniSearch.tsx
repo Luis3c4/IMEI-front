@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Search, User, IdCard, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { IMEIAPIService } from "@/services/api";
+import { useDniSearch } from "@/services/api-query";
 
 interface DniResult {
   full_name: string;
@@ -12,26 +12,35 @@ interface DniResult {
 export const DniSearch = () => {
   const [dni, setDni] = useState("");
   const [result, setResult] = useState<DniResult | null>(null);
-  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { refetch, isFetching } = useDniSearch(dni, {
+    enabled: false,
+    retry: false,
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
 
   const handleSearch = async () => {
     if (dni.length !== 8) return;
     
-    setIsSearching(true);
     setError(null);
     
     try {
-      const data = await IMEIAPIService.searchDni(dni);
-      setResult({
-        full_name: data.full_name,
-        document_number: data.document_number,
-      });
+      const response = await refetch();
+      if (response.data) {
+        setResult({
+          full_name: response.data.full_name,
+          document_number: response.data.document_number,
+        });
+      } else if (response.error) {
+        const message = response.error instanceof Error ? response.error.message : "Error al consultar el DNI";
+        setError(message);
+        setResult(null);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al consultar el DNI");
+      const message = err instanceof Error ? err.message : "Error al consultar el DNI";
+      setError(message);
       setResult(null);
-    } finally {
-      setIsSearching(false);
     }
   };
 
@@ -65,11 +74,11 @@ export const DniSearch = () => {
         </div>
         <Button
           onClick={handleSearch}
-          disabled={dni.length !== 8 || isSearching}
+          disabled={dni.length !== 8 || isFetching}
           className="h-11 px-6"
         >
           <Search className="w-4 h-4 mr-2" />
-          {isSearching ? "Buscando..." : "Buscar"}
+          {isFetching ? "Buscando..." : "Buscar"}
         </Button>
       </div>
 

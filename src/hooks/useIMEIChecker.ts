@@ -2,14 +2,25 @@
 
 import { useState } from "react";
 import type { DeviceInfo } from "../types";
-import { IMEIAPIService } from "../services/api";
+import { useCheckDevice } from "../services/api-query";
 
 export function useIMEIChecker(onShowToast: (message: string, type: string) => void) {
   const [serviceId, setServiceId] = useState("17");
   const [inputValue, setInputValue] = useState("");
-  const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DeviceInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const { mutateAsync: runCheckDevice, isPending: loading } = useCheckDevice({
+    onSuccess: (deviceInfo) => {
+      setResult(deviceInfo);
+      onShowToast("Dispositivo encontrado", "success");
+    },
+    onError: (err) => {
+      const errorMessage = err instanceof Error ? err.message : "Error al verificar el dispositivo";
+      setError(errorMessage);
+      onShowToast(errorMessage, "error");
+    },
+  });
 
   const checkDevice = async (code: string) => {
     if (!code.trim()) {
@@ -17,22 +28,9 @@ export function useIMEIChecker(onShowToast: (message: string, type: string) => v
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-      setResult(null);
-
-      const deviceInfo = await IMEIAPIService.checkDevice(code, serviceId);
-      setResult(deviceInfo);
-      onShowToast("✅ Dispositivo encontrado", "success");
-    } catch (err: any) {
-      const errorMessage =
-        err.message || "Error al verificar el dispositivo";
-      setError(errorMessage);
-      onShowToast(errorMessage, "error");
-    } finally {
-      setLoading(false);
-    }
+    setError(null);
+    setResult(null);
+    await runCheckDevice({ code, serviceId }).catch(() => {});
   };
 
   const clearResult = () => {

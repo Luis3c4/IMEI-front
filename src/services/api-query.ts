@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, type UseQueryOptions,type UseMutationOptions } from "@tanstack/react-query";
 import { API_BASE } from "../utils/constants";
-import type { Product } from "../data/products";
+import type { Product } from "../types/productsType";
 import type { DeviceInfo, Stats, LastOrderInfo, ServiceResponse } from "../types";
 
 // ============= Query Keys =============
@@ -16,7 +16,7 @@ export const queryKeys = {
 };
 
 // ============= Funciones de Fetch =============
-class IMEIAPIServiceClass {
+class ApiServiceClass {
   async checkDevice(
     code: string,
     serviceId: string
@@ -69,51 +69,11 @@ class IMEIAPIServiceClass {
       throw new Error(payload?.error || "Error al cargar productos");
     }
 
-    const normalizedProducts = payload.data.flatMap((item: any) => {
-      const variants = Array.isArray(item?.product_variants)
-        ? item.product_variants
-        : [];
-
-      if (variants.length === 0) {
-        return [
-          {
-            id: item?.id?.toString() ?? "",
-            base_product_id: item?.id?.toString() ?? "",
-            name: item?.name ?? "Producto",
-            product_number: "",
-            serial_number: "",
-            item_price: 0,
-            quantity: 0,
-            category: item?.category ?? "Sin categoría",
-            description: item?.description ?? "",
-          },
-        ];
-      }
-
-      return variants.map((variant: any) => ({
-        id:
-          variant?.id?.toString() ||
-          `${item?.id ?? "product"}-${variant?.serial_number ?? "variant"}`,
-        base_product_id: item?.id?.toString() ?? "",
-        variant_id: variant?.id?.toString(),
-        name: item?.name ?? "Producto",
-        product_number: variant?.serial_number ?? "",
-        serial_number: variant?.serial_number ?? "",
-        item_price: Number(variant?.price ?? 0),
-        quantity:
-          typeof variant?.quantity === "number" ? variant.quantity : undefined,
-        category: item?.category ?? "Sin categoría",
-        description: item?.description ?? "",
-        color: variant?.color ?? undefined,
-        capacity: variant?.capacity ?? undefined,
-      }));
-    });
-
-    if (normalizedProducts.length === 0) {
+    if (payload.data.length === 0) {
       throw new Error("No se encontraron productos");
     }
 
-    return normalizedProducts as Product[];
+    return payload.data as Product[];
   }
 
   async getServices(): Promise<ServiceResponse> {
@@ -185,7 +145,7 @@ class IMEIAPIServiceClass {
   }
 }
 
-const apiService = new IMEIAPIServiceClass();
+const apiService = new ApiServiceClass();
 
 // ============= Hooks con TanStack Query =============
 

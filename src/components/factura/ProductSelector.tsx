@@ -1,25 +1,43 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronRight, Plus, Check, Package, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatPrice, type Product } from "@/data/products";
-import { IMEIAPIService } from "@/services/api";
+import { formatPrice } from "@/helper/products";
+import type {ProductVariant } from "@/types/productsType";
+import { useProducts } from "@/services/api-query";
+
+// Tipo extendido para incluir información del producto base
+interface SelectedProduct extends ProductVariant {
+  baseProductId: number;
+  baseProductName: string;
+  category: string;
+  description: string;
+}
 
 interface ProductSelectorProps {
-  onAddProduct: (product: Product) => void;
-  selectedProducts: Product[];
+  onAddProduct: (product: SelectedProduct) => void;
+  selectedProducts: SelectedProduct[];
 }
 
 type Step = "model" | "capacity" | "color" | "serial";
 
 interface ProductModel {
   name: string;
-  base_product_id: string;
+  base_product_id: number;
   category: string;
 }
 
-interface SerialEntry extends Product {
+interface SerialEntry {
   entryId: string;
   displaySerial: string;
+  baseProductId: number;
+  baseProductName: string;
+  category: string;
+  description: string;
+  variantId: number;
+  color: string;
+  price: number;
+  capacity: string;
+  status: string;
 }
 
 export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelectorProps) => {
@@ -27,37 +45,19 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
   const [selectedModel, setSelectedModel] = useState<ProductModel | null>(null);
   const [selectedCapacity, setSelectedCapacity] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const items = await IMEIAPIService.getProducts();
-        setProducts(items);
-        setError(null);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Error al cargar productos";
-        setError(message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProducts();
-  }, []);
+  const { data: products = [], isLoading, error } = useProducts({ retry: 1 });
+  const errorMessage = error instanceof Error ? error.message : null;
 
   // Obtener modelos únicos agrupados por categoría
   const modelsByCategory = useMemo(() => {
     const modelsMap = new Map<string, ProductModel>();
     
     products.forEach(product => {
-      const key = `${product.base_product_id}-${product.name}`;
+      const key = `${product.id}-${product.name}`;
       if (!modelsMap.has(key)) {
         modelsMap.set(key, {
           name: product.name,
-          base_product_id: product.base_product_id,
+          base_product_id: product.id,
           category: product.category
         });
       }
@@ -66,13 +66,13 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
     const uniqueModels = Array.from(modelsMap.values());
     
     return uniqueModels.reduce((acc, model) => {
-      if (!acc[model.category]) {
+      if (!acc[model.category]) {             
         acc[model.category] = [];
       }
       acc[model.category].push(model);
       return acc;
     }, {} as Record<string, ProductModel[]>);
-  }, [products]);
+  }, [products]); 
 
   const categories = useMemo(() => {
     return Object.keys(modelsByCategory).sort();
@@ -84,11 +84,13 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
     
     const capacitiesMap = new Map<string, { capacity: string; totalStock: number }>();
     
-    products
-      .filter(p => p.base_product_id === selectedModel.base_product_id && p.capacity)
-      .forEach(product => {
-        const capacity = product.capacity!;
-        const stock = typeof product.quantity === "number" ? product.quantity : 0;
+    const selectedProduct = products.find(p => p.id === selectedModel.base_product_id);
+    if (!selectedProduct) return [];
+
+    selectedProduct.product_variants.forEach(variant => {
+      if (variant.capacity) {
+        const capacity = variant.capacity;
+        const stock = variant.quantity || 0;
         const current = capacitiesMap.get(capacity);
         
         if (current) {
@@ -99,7 +101,8 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
         } else {
           capacitiesMap.set(capacity, { capacity, totalStock: stock });
         }
-      });
+      }
+    });
     
     return Array.from(capacitiesMap.values())
       .sort((a, b) => {
@@ -115,29 +118,27 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
 
     const colorMap = new Map<string, { color: string; stock: number; price: number }>();
 
-    products
-      .filter(
-        (p) =>
-          p.base_product_id === selectedModel.base_product_id &&
-          p.capacity === selectedCapacity &&
-          p.color
-      )
-      .forEach((product) => {
-        const color = product.color!;
-        const stock = typeof product.quantity === "number" ? product.quantity : 0;
+    const selectedProduct = products.find(p => p.id === selectedModel.base_product_id);
+    if (!selectedProduct) return [];
+
+    selectedProduct.product_variants
+      .filter(variant => variant.capacity === selectedCapacity && variant.color)
+      .forEach(variant => {
+        const color = variant.color;
+        const stock = variant.quantity || 0;
         const current = colorMap.get(color);
 
         if (current) {
           colorMap.set(color, {
             color,
             stock: current.stock + stock,
-            price: product.item_price,
+            price: variant.price,
           });
         } else {
           colorMap.set(color, {
             color,
             stock,
-            price: product.item_price,
+            price: variant.price,
           });
         }
       });
@@ -151,32 +152,39 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
 
     const entries: SerialEntry[] = [];
 
-    products.forEach((p) => {
-      const matches =
-        p.base_product_id === selectedModel.base_product_id &&
-        p.capacity === selectedCapacity &&
-        p.color === selectedColor &&
-        p.status !== "sold"; // Filtrar productos ya vendidos
+    const selectedProduct = products.find(p => p.id === selectedModel.base_product_id);
+    if (!selectedProduct) return [];
 
-      if (!matches) return;
-
-      const hasSerial = Boolean(p.serial_number);
-
-      if (hasSerial) {
-        // Si tiene serial, es un producto individual
-        entries.push({
-          ...p,
-          entryId: p.id,
-          displaySerial: p.serial_number,
+    selectedProduct.product_variants
+      .filter(variant => 
+        variant.capacity === selectedCapacity &&
+        variant.color === selectedColor
+      )
+      .forEach(variant => {
+        variant.product_items?.forEach(item => {
+          if (item.status !== "sold" && item.serial_number) {
+            entries.push({
+              entryId: `${variant.id}-${item.id}`,
+              displaySerial: item.serial_number,
+              baseProductId: selectedProduct.id,
+              baseProductName: selectedProduct.name,
+              category: selectedProduct.category,
+              description: selectedProduct.description,
+              variantId: variant.id,
+              color: variant.color,
+              price: variant.price,
+              capacity: variant.capacity,
+              status: item.status,
+            });
+          }
         });
-      }
-    });
+      });
 
     return entries;
   }, [products, selectedCapacity, selectedColor, selectedModel]);
 
   const isProductSelected = (entryId: string) => {
-    return selectedProducts.some((p) => p.id === entryId);
+    return selectedProducts.some((p) => `${p.id}-${p.serial_numbers?.[0]}` === entryId);
   };
 
   const resetSelection = () => {
@@ -207,10 +215,17 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
   const handleSerialSelect = (product: SerialEntry) => {
     if (isProductSelected(product.entryId)) return;
     onAddProduct({
-      ...product,
-      id: product.entryId,
-      serial_number: product.displaySerial,
-      quantity_ordered: 1,
+      id: product.variantId,
+      color: product.color,
+      price: product.price,
+      capacity: product.capacity,
+      product_items: [],
+      quantity: 1,
+      serial_numbers: [product.displaySerial],
+      baseProductId: product.baseProductId,
+      baseProductName: product.baseProductName,
+      category: product.category,
+      description: product.description,
     });
   };
 
@@ -224,11 +239,11 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
     );
   }
 
-  if (error) {
+  if (errorMessage) {
     return (
       <div className="flex items-center justify-center py-8 text-destructive">
         <div className="text-center">
-          <p className="text-sm">{error}</p>
+          <p className="text-sm">{errorMessage}</p>
         </div>
       </div>
     );
@@ -405,7 +420,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
           <p className="text-xs text-muted-foreground">
             Selecciona dispositivos por número de serie (multi-selección)
           </p>
-          <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
             {availableSerials.map((product) => {
               const isSelected = isProductSelected(product.entryId);
               return (
@@ -431,16 +446,14 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {product.capacity} · {product.color}
-                        {product.status && (
-                          <span className={`ml-2 ${product.status === "available" ? "text-green-600" : "text-muted-foreground"}`}>
-                            · {product.status === "available" ? "Disponible" : product.status}
-                          </span>
-                        )}
+                        <span className={`ml-2 ${product.status === "available" ? "text-green-600" : "text-muted-foreground"}`}>
+                          · {product.status === "available" ? "Disponible" : product.status}
+                        </span>
                       </p>
                     </div>
                   </div>
                   <span className="text-sm font-semibold text-foreground">
-                    {formatPrice(product.item_price)}
+                    {formatPrice(product.price)}
                   </span>
                 </button>
               );

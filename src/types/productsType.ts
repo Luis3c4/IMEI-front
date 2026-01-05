@@ -1,11 +1,11 @@
 export interface Welcome {
     success: boolean;
-    data:    Datum[];
+    data:    Product[];
     count:   number;
     error:   null;
 }
 
-export interface Datum {
+export interface Product {
     id:               number;
     name:             string;
     category:         string;
