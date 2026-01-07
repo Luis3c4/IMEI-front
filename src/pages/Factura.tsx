@@ -15,8 +15,14 @@ interface SelectedProduct extends ProductVariant {
   description: string;
 }
 
+interface DniResult {
+  full_name: string;
+  document_number: string;
+}
+
 const Factura = () => {
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
+  const [customerData, setCustomerData] = useState<DniResult | null>(null);
   const { mutateAsync: generateInvoiceTestPdf, isPending: isGeneratingPdf } = useInvoiceTestPdfPreview();
 
   const handleAddProduct = (product: SelectedProduct) => {
@@ -45,8 +51,8 @@ const Factura = () => {
     }),
     order_number: `W${Date.now().toString().slice(-10)}`, // Generar número único
     customer: {
-      name: "Geraldine Eva Flores Flores", // Dato estático por ahora
-      customer_number: "900007" // Dato estático por ahora
+      name: customerData?.full_name || "Cliente sin nombre",
+      customer_number: customerData?.document_number || "Sin documento"
     },
     products: selectedProducts.map((product) => ({
       name: product.baseProductName,
@@ -72,7 +78,7 @@ const Factura = () => {
   console.log("Objeto invoice:", invoiceBody);
 
     try {
-      const pdfBlob = await generateInvoiceTestPdf();
+      const pdfBlob = await generateInvoiceTestPdf(invoiceBody);
       const url = URL.createObjectURL(pdfBlob);
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -133,7 +139,7 @@ const Factura = () => {
                   Consulta por DNI
                 </h3>
               </div>
-              <DniSearch />
+              <DniSearch onCustomerDataChange={setCustomerData} />
             </div>
 
             {/* Product Selector Card */}

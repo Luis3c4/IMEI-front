@@ -9,7 +9,11 @@ interface DniResult {
   document_number: string;
 }
 
-export const DniSearch = () => {
+interface DniSearchProps {
+  onCustomerDataChange?: (data: DniResult | null) => void;
+}
+
+export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
   const [dni, setDni] = useState("");
   const [result, setResult] = useState<DniResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,19 +32,23 @@ export const DniSearch = () => {
     try {
       const response = await refetch();
       if (response.data) {
-        setResult({
+        const customerData = {
           full_name: response.data.full_name,
           document_number: response.data.document_number,
-        });
+        };
+        setResult(customerData);
+        onCustomerDataChange?.(customerData);
       } else if (response.error) {
         const message = response.error instanceof Error ? response.error.message : "Error al consultar el DNI";
         setError(message);
         setResult(null);
+        onCustomerDataChange?.(null);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al consultar el DNI";
       setError(message);
       setResult(null);
+      onCustomerDataChange?.(null);
     }
   };
 
@@ -49,6 +57,7 @@ export const DniSearch = () => {
     setDni(value);
     if (value.length !== 8) {
       setResult(null);
+      onCustomerDataChange?.(null);
     }
   };
 

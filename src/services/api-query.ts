@@ -108,9 +108,11 @@ class ApiServiceClass {
     }
   }
 
-  async getInvoiceTestPdfPreview(): Promise<Blob> {
-    const response = await fetch(`${API_BASE}/api/invoices/test/pdf?preview=true`, {
-      method: "GET",
+  async getInvoiceTestPdfPreview(invoiceBody: unknown): Promise<Blob> {
+    const response = await fetch(`${API_BASE}/api/invoices/generate/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(invoiceBody),
     });
 
     if (!response.ok) {
@@ -247,10 +249,10 @@ export function useCheckDevice(
  * Hook para generar/preview de PDF de factura de prueba
  */
 export function useInvoiceTestPdfPreview(
-  options?: UseMutationOptions<Blob, Error, void>
+  options?: UseMutationOptions<Blob, Error, unknown>
 ) {
   return useMutation({
-    mutationFn: () => apiService.getInvoiceTestPdfPreview(),
+    mutationFn: (invoiceBody: unknown) => apiService.getInvoiceTestPdfPreview(invoiceBody),
     ...options,
   });
 }
