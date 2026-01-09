@@ -77,7 +77,7 @@ export default function IMEICheck() {
 
   const { mutateAsync: runCheckDevice, isPending: isChecking } = useCheckDevice({
     onSuccess: async (deviceInfo) => {
-      setResult(deviceInfo);                      
+      setResult(deviceInfo.data);                      
       setInputValue("");
       showToast("Dispositivo encontrado", "success");
       await refreshData();

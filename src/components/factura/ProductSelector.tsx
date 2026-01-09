@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronRight, Plus, Check, Package, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/helper/products";
-import type {ProductVariant } from "@/types/productsType";
+import type { ProductVariant } from "@/types/productsType";
 import { useProducts } from "@/services/api-query";
 
 // Tipo extendido para incluir información del producto base
@@ -51,7 +51,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
   // Obtener modelos únicos agrupados por categoría
   const modelsByCategory = useMemo(() => {
     const modelsMap = new Map<string, ProductModel>();
-    
+
     products.forEach(product => {
       const key = `${product.id}-${product.name}`;
       if (!modelsMap.has(key)) {
@@ -64,15 +64,15 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
     });
 
     const uniqueModels = Array.from(modelsMap.values());
-    
+
     return uniqueModels.reduce((acc, model) => {
-      if (!acc[model.category]) {             
+      if (!acc[model.category]) {
         acc[model.category] = [];
       }
       acc[model.category].push(model);
       return acc;
     }, {} as Record<string, ProductModel[]>);
-  }, [products]); 
+  }, [products]);
 
   const categories = useMemo(() => {
     return Object.keys(modelsByCategory).sort();
@@ -81,9 +81,9 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
   // Obtener capacidades disponibles para el modelo seleccionado
   const availableCapacities = useMemo(() => {
     if (!selectedModel) return [];
-    
+
     const capacitiesMap = new Map<string, { capacity: string; totalStock: number }>();
-    
+
     const selectedProduct = products.find(p => p.id === selectedModel.base_product_id);
     if (!selectedProduct) return [];
 
@@ -92,7 +92,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
         const capacity = variant.capacity;
         const stock = variant.quantity || 0;
         const current = capacitiesMap.get(capacity);
-        
+
         if (current) {
           capacitiesMap.set(capacity, {
             capacity,
@@ -103,7 +103,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
         }
       }
     });
-    
+
     return Array.from(capacitiesMap.values())
       .sort((a, b) => {
         const numA = parseInt(a.capacity);
@@ -156,7 +156,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
     if (!selectedProduct) return [];
 
     selectedProduct.product_variants
-      .filter(variant => 
+      .filter(variant =>
         variant.capacity === selectedCapacity &&
         variant.color === selectedColor
       )
@@ -183,8 +183,8 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
     return entries;
   }, [products, selectedCapacity, selectedColor, selectedModel]);
 
-  const isProductSelected = (entryId: string) => {
-    return selectedProducts.some((p) => `${p.id}-${p.serial_numbers?.[0]}` === entryId);
+  const isProductSelected = (serialNumber: string) => {
+    return selectedProducts.some((p) => p.serial_numbers?.includes(serialNumber));
   };
 
   const resetSelection = () => {
@@ -329,11 +329,10 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                 key={capacity}
                 onClick={() => totalStock > 0 && handleCapacitySelect(capacity)}
                 disabled={totalStock === 0}
-                className={`px-4 py-2 rounded-lg border transition-all text-sm font-medium ${
-                  totalStock === 0
+                className={`px-4 py-2 rounded-lg border transition-all text-sm font-medium ${totalStock === 0
                     ? "border-border/30 bg-muted/30 cursor-not-allowed opacity-50 text-muted-foreground"
                     : "border-border/50 bg-background/50 hover:bg-accent hover:border-primary/30 text-foreground hover:text-primary"
-                }`}
+                  }`}
               >
                 <span>{capacity}</span>
                 <span className={`ml-2 text-xs ${totalStock === 0 ? "text-destructive" : "text-muted-foreground"}`}>
@@ -371,11 +370,10 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                   key={color}
                   onClick={() => stock > 0 && handleColorSelect(color)}
                   disabled={stock === 0}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${
-                    stock === 0
+                  className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${stock === 0
                       ? "border-border/30 bg-muted/30 cursor-not-allowed opacity-50"
                       : "border-border/50 bg-background/50 hover:bg-accent hover:border-primary/30"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <Plus className="w-4 h-4 text-muted-foreground" />
@@ -422,17 +420,16 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
           </p>
           <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
             {availableSerials.map((product) => {
-              const isSelected = isProductSelected(product.entryId);
+              const isSelected = isProductSelected(product.displaySerial);
               return (
                 <button
                   key={product.entryId}
                   onClick={() => !isSelected && handleSerialSelect(product)}
                   disabled={isSelected}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${
-                    isSelected
+                  className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${isSelected
                       ? "border-primary/50 bg-primary/10 cursor-not-allowed"
                       : "border-border/50 bg-background/50 hover:bg-accent hover:border-primary/30"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     {isSelected ? (

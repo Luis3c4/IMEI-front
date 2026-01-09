@@ -3,7 +3,7 @@
 import { useQuery, useMutation, type UseQueryOptions,type UseMutationOptions } from "@tanstack/react-query";
 import { API_BASE } from "../utils/constants";
 import type { Product } from "../types/productsType";
-import type { DeviceInfo, Stats, LastOrderInfo, ServiceResponse } from "../types";
+import type { Stats, LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types";
 
 // ============= Query Keys =============
 export const queryKeys = {
@@ -20,7 +20,7 @@ class ApiServiceClass {
   async checkDevice(
     code: string,
     serviceId: string
-  ): Promise<DeviceInfo> {
+  ): Promise<DeviceApiResponse> {
     const response = await fetch(`${API_BASE}/api/devices/consultar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -234,7 +234,7 @@ export function useDniSearch(
  */
 export function useCheckDevice(
   options?: UseMutationOptions<
-    DeviceInfo,
+    DeviceApiResponse,
     Error,
     { code: string; serviceId: string }
   >

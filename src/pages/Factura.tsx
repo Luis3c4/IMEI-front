@@ -65,7 +65,7 @@ const Factura = () => {
     })),
     invoice_info: {
       invoice_number: `MA${Date.now().toString().slice(-8)}`, // Generar número único
-      invoice_date: new Date().toLocaleDateString("en-US", { 
+      invoice_date: new Date().toLocaleDateString("en-US", {  
         year: "numeric", 
         month: "long", 
         day: "2-digit" 

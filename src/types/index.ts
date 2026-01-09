@@ -65,3 +65,18 @@ export interface InfoCardProps {
   value: string | undefined;
   highlight?: "green" | "yellow" | "red";
 }
+
+// Generic response for device lookup APIs that return a `data` payload
+export interface DeviceApiResponse {
+  success: boolean;
+  data: DeviceInfo;
+  balance?: number;
+  price?: number;
+  order_id?: string;
+  sheet_updated?: boolean;
+  total_registros?: number;
+  sheet_url?: string;
+  // optional fields like error/message may appear in some responses
+  error?: string;
+  message?: string;
+}

@@ -6,7 +6,17 @@ import { router } from './router'
 import { AuthProvider } from './context/AuthProvider'
 import './index.css'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
+      // Keep data fresh for 5 minutes to avoid frequent refetches
+      staleTime: 1000 * 60 * 5,
+    },
+  },
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
