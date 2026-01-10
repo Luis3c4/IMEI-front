@@ -34,6 +34,7 @@ interface SerialEntry {
   category: string;
   description: string;
   variantId: number;
+  itemId: number;
   color: string;
   price: number;
   capacity: string;
@@ -79,6 +80,22 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
   }, [modelsByCategory]);
 
   // Obtener capacidades disponibles para el modelo seleccionado
+  // Verificar si el producto seleccionado no tiene color ni capacidad
+  const productHasNoColorOrCapacity = useMemo(() => {
+    if (!selectedModel) return { hasNoColor: false, hasNoCapacity: false };
+
+    const selectedProduct = products.find(p => p.id === selectedModel.base_product_id);
+    if (!selectedProduct || selectedProduct.product_variants.length === 0) {
+      return { hasNoColor: false, hasNoCapacity: false };
+    }
+
+    const firstVariant = selectedProduct.product_variants[0];
+    const hasNoCapacity = firstVariant.capacity === null;
+    const hasNoColor = firstVariant.color === null;
+
+    return { hasNoColor, hasNoCapacity };
+  }, [selectedModel, products]);
+
   const availableCapacities = useMemo(() => {
     if (!selectedModel) return [];
 
@@ -148,7 +165,13 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
 
   // Dispositivos disponibles para el modelo/capacidad/color seleccionados (seriales)
   const availableSerials = useMemo<SerialEntry[]>(() => {
-    if (!selectedModel || !selectedCapacity || !selectedColor) return [];
+    if (!selectedModel) return [];
+    if (!selectedCapacity || selectedCapacity === "N/A") {
+      if (!productHasNoColorOrCapacity.hasNoCapacity) return [];
+    }
+    if (!selectedColor || selectedColor === "N/A") {
+      if (!productHasNoColorOrCapacity.hasNoColor) return [];
+    }
 
     const entries: SerialEntry[] = [];
 
@@ -156,10 +179,17 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
     if (!selectedProduct) return [];
 
     selectedProduct.product_variants
-      .filter(variant =>
-        variant.capacity === selectedCapacity &&
-        variant.color === selectedColor
-      )
+      .filter(variant => {
+        const capacityMatch = selectedCapacity === "N/A" 
+          ? variant.capacity === null 
+          : variant.capacity === selectedCapacity;
+        
+        const colorMatch = selectedColor === "N/A" 
+          ? variant.color === null 
+          : variant.color === selectedColor;
+        
+        return capacityMatch && colorMatch;
+      })
       .forEach(variant => {
         variant.product_items?.forEach(item => {
           if (item.status !== "sold" && item.serial_number) {
@@ -168,12 +198,13 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
               displaySerial: item.serial_number,
               baseProductId: selectedProduct.id,
               baseProductName: selectedProduct.name,
+              itemId: item.id,
               category: selectedProduct.category,
               description: selectedProduct.description,
               variantId: variant.id,
-              color: variant.color,
+              color: variant.color || "N/A",
               price: variant.price,
-              capacity: variant.capacity,
+              capacity: variant.capacity || "N/A",
               status: item.status,
             });
           }
@@ -181,7 +212,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
       });
 
     return entries;
-  }, [products, selectedCapacity, selectedColor, selectedModel]);
+  }, [products, selectedCapacity, selectedColor, selectedModel, productHasNoColorOrCapacity]);
 
   const isProductSelected = (serialNumber: string) => {
     return selectedProducts.some((p) => p.serial_numbers?.includes(serialNumber));
@@ -196,15 +227,53 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
 
   const handleModelSelect = (model: ProductModel) => {
     setSelectedModel(model);
-    setSelectedCapacity(null);
-    setSelectedColor(null);
-    setStep("capacity");
+    
+    // Verificar si el producto tiene color y/o capacidad null
+    const selectedProduct = products.find(p => p.id === model.base_product_id);
+    if (selectedProduct && selectedProduct.product_variants.length > 0) {
+      const firstVariant = selectedProduct.product_variants[0];
+      const hasNoCapacity = firstVariant.capacity === null;
+      const hasNoColor = firstVariant.color === null;
+      
+      if (hasNoCapacity && hasNoColor) {
+        // Si ambos son null, ir directamente a serial
+        setSelectedCapacity("N/A");
+        setSelectedColor("N/A");
+        setStep("serial");
+      } else if (hasNoCapacity) {
+        // Si solo la capacidad es null, ir a color
+        setSelectedCapacity("N/A");
+        setSelectedColor(null);
+        setStep("color");
+      } else if (hasNoColor) {
+        // Si solo el color es null, ir a capacity pero luego saltar a serial
+        setSelectedCapacity(null);
+        setSelectedColor("N/A");
+        setStep("capacity");
+      } else {
+        // Flujo normal
+        setSelectedCapacity(null);
+        setSelectedColor(null);
+        setStep("capacity");
+      }
+    } else {
+      setSelectedCapacity(null);
+      setSelectedColor(null);
+      setStep("capacity");
+    }
   };
 
   const handleCapacitySelect = (capacity: string) => {
     setSelectedCapacity(capacity);
-    setSelectedColor(null);
-    setStep("color");
+    
+    // Si el producto no tiene color, saltar directamente a serial
+    if (productHasNoColorOrCapacity.hasNoColor) {
+      setSelectedColor("N/A");
+      setStep("serial");
+    } else {
+      setSelectedColor(null);
+      setStep("color");
+    }
   };
 
   const handleColorSelect = (color: string) => {
@@ -219,7 +288,11 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
       color: product.color,
       price: product.price,
       capacity: product.capacity,
-      product_items: [],
+      product_items: [{
+        id: product.itemId,
+        status: product.status as any,
+        serial_number: product.displaySerial,
+      }],
       quantity: 1,
       serial_numbers: [product.displaySerial],
       baseProductId: product.baseProductId,
@@ -330,8 +403,8 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                 onClick={() => totalStock > 0 && handleCapacitySelect(capacity)}
                 disabled={totalStock === 0}
                 className={`px-4 py-2 rounded-lg border transition-all text-sm font-medium ${totalStock === 0
-                    ? "border-border/30 bg-muted/30 cursor-not-allowed opacity-50 text-muted-foreground"
-                    : "border-border/50 bg-background/50 hover:bg-accent hover:border-primary/30 text-foreground hover:text-primary"
+                  ? "border-border/30 bg-muted/30 cursor-not-allowed opacity-50 text-muted-foreground"
+                  : "border-border/50 bg-background/50 hover:bg-accent hover:border-primary/30 text-foreground hover:text-primary"
                   }`}
               >
                 <span>{capacity}</span>
@@ -371,8 +444,8 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                   onClick={() => stock > 0 && handleColorSelect(color)}
                   disabled={stock === 0}
                   className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${stock === 0
-                      ? "border-border/30 bg-muted/30 cursor-not-allowed opacity-50"
-                      : "border-border/50 bg-background/50 hover:bg-accent hover:border-primary/30"
+                    ? "border-border/30 bg-muted/30 cursor-not-allowed opacity-50"
+                    : "border-border/50 bg-background/50 hover:bg-accent hover:border-primary/30"
                     }`}
                 >
                   <div className="flex items-center gap-3">
@@ -395,15 +468,23 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
       )}
 
       {/* Step: Serial Selection */}
-      {step === "serial" && selectedModel && selectedCapacity && selectedColor && (
+      {step === "serial" && selectedModel && (selectedCapacity || selectedCapacity === "N/A") && (selectedColor || selectedColor === "N/A") && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               <span className="text-foreground font-medium">{selectedModel.name}</span>
-              {" · "}
-              <span className="text-foreground">{selectedCapacity}</span>
-              {" · "}
-              <span className="text-foreground">{selectedColor}</span>
+              {selectedCapacity && selectedCapacity !== "N/A" && (
+                <>
+                  {" · "}
+                  <span className="text-foreground">{selectedCapacity}</span>
+                </>
+              )}
+              {selectedColor && selectedColor !== "N/A" && (
+                <>
+                  {" · "}
+                  <span className="text-foreground">{selectedColor}</span>
+                </>
+              )}
             </p>
             <div className="flex gap-1">
               <Button variant="ghost" size="sm" onClick={resetSelection}>
@@ -427,8 +508,8 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                   onClick={() => !isSelected && handleSerialSelect(product)}
                   disabled={isSelected}
                   className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${isSelected
-                      ? "border-primary/50 bg-primary/10 cursor-not-allowed"
-                      : "border-border/50 bg-background/50 hover:bg-accent hover:border-primary/30"
+                    ? "border-primary/50 bg-primary/10 cursor-not-allowed"
+                    : "border-border/50 bg-background/50 hover:bg-accent hover:border-primary/30"
                     }`}
                 >
                   <div className="flex items-center gap-3">
@@ -442,7 +523,9 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
                         {product.displaySerial}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {product.capacity} · {product.color}
+                        {product.capacity !== "N/A" && product.capacity}
+                        {product.capacity !== "N/A" && product.color !== "N/A" && " · "}
+                        {product.color !== "N/A" && product.color}
                         <span className={`ml-2 ${product.status === "available" ? "text-green-600" : "text-muted-foreground"}`}>
                           · {product.status === "available" ? "Disponible" : product.status}
                         </span>

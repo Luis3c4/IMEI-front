@@ -145,6 +145,21 @@ class ApiServiceClass {
 
     return response.json();
   }
+
+  async bulkToggleSoldItems(itemIds: number[]): Promise<void> {
+    const response = await fetch(`${API_BASE}/api/products/items/bulk-toggle-sold`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_ids: itemIds }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Error al actualizar el estado de los productos");
+    }
+
+    return response.json();
+  }
 }
 
 const apiService = new ApiServiceClass();
@@ -253,6 +268,18 @@ export function useInvoiceTestPdfPreview(
 ) {
   return useMutation({
     mutationFn: (invoiceBody: unknown) => apiService.getInvoiceTestPdfPreview(invoiceBody),
+    ...options,
+  });
+}
+
+/**
+ * Hook para cambiar el estado de múltiples items a "sold"
+ */
+export function useBulkToggleSoldItems(
+  options?: UseMutationOptions<void, Error, number[]>
+) {
+  return useMutation({
+    mutationFn: (itemIds: number[]) => apiService.bulkToggleSoldItems(itemIds),
     ...options,
   });
 }

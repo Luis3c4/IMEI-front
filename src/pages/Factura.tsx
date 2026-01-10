@@ -5,7 +5,7 @@ import { ProductSelector } from "@/components/factura/ProductSelector";
 import { SelectedProductsList } from "@/components/factura/SelectedProductsList";
 import type { ProductVariant } from "@/types/productsType";
 import { DniSearch } from "@/components/factura/DniSearch";
-import { useInvoiceTestPdfPreview } from "@/services/api-query";
+import { useInvoiceTestPdfPreview, useBulkToggleSoldItems, useProducts } from "@/services/api-query";
 
 // Tipo extendido para incluir información del producto base
 interface SelectedProduct extends ProductVariant {
@@ -23,7 +23,10 @@ interface DniResult {
 const Factura = () => {
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [customerData, setCustomerData] = useState<DniResult | null>(null);
+  const [resetKey, setResetKey] = useState(0);
   const { mutateAsync: generateInvoiceTestPdf, isPending: isGeneratingPdf } = useInvoiceTestPdfPreview();
+  const { mutateAsync: bulkToggleSold, isPending: isTogglingStatus } = useBulkToggleSoldItems();
+  const { refetch: refetchProducts } = useProducts();
 
   const handleAddProduct = (product: SelectedProduct) => {
     setSelectedProducts((prev) => [...prev, { ...product, quantity: 1 }]);
@@ -42,52 +45,78 @@ const Factura = () => {
   };
 
   const handleGeneratePDF = async () => {
+    // Extraer los IDs de los product_items de los productos seleccionados
+    const itemIds: number[] = [];
+    
+    selectedProducts.forEach((product) => {
+      product.product_items?.forEach((item) => {
+        itemIds.push(item.id);
+      });
+    });
+
+    console.log("IDs de items a marcar como vendidos:", itemIds);
+
     // Crear el body con la estructura de Invoice
-  const invoiceBody = {
-    order_date: new Date().toLocaleDateString("en-US", { 
-      year: "numeric", 
-      month: "long", 
-      day: "2-digit" 
-    }),
-    order_number: `W${Date.now().toString().slice(-10)}`, // Generar número único
-    customer: {
-      name: customerData?.full_name || "Cliente sin nombre",
-      customer_number: customerData?.document_number || "Sin documento"
-    },
-    products: selectedProducts.map((product) => ({
-      name: product.baseProductName,
-      product_number: product.id.toString(),
-      serial_number: product.serial_numbers?.[0] || `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
-      item_price: product.price,
-      quantity_ordered: 1,
-      quantity_fulfilled: 1,
-      extended_price: product.price,
-    })),
-    invoice_info: {
-      invoice_number: `MA${Date.now().toString().slice(-8)}`, // Generar número único
-      invoice_date: new Date().toLocaleDateString("en-US", {  
+    const invoiceBody = {
+      order_date: new Date().toLocaleDateString("en-US", { 
         year: "numeric", 
         month: "long", 
         day: "2-digit" 
-      })
-    }
-  };
+      }),
+      order_number: `W${Date.now().toString().slice(-10)}`, // Generar número único
+      customer: {
+        name: customerData?.full_name || "Cliente sin nombre",
+        customer_number: customerData?.document_number || "Sin documento"
+      },
+      products: selectedProducts.map((product) => ({
+        name: product.baseProductName,
+        product_number: product.id.toString(),
+        serial_number: product.serial_numbers?.[0] || `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
+        item_price: product.price,
+        quantity_ordered: 1,
+        quantity_fulfilled: 1,
+        extended_price: product.price,
+      })),
+      invoice_info: {
+        invoice_number: `MA${Date.now().toString().slice(-8)}`, // Generar número único
+        invoice_date: new Date().toLocaleDateString("en-US", {  
+          year: "numeric", 
+          month: "long", 
+          day: "2-digit" 
+        })
+      }
+    };
 
-  // Mostrar la estructura por consola
-  console.log("Body para enviar al backend:", JSON.stringify(invoiceBody, null, 2));
-  console.log("Objeto invoice:", invoiceBody);
+    console.log("Body para enviar al backend:", JSON.stringify(invoiceBody, null, 2));
 
     try {
+      // Primero cambiar el estado de los productos a "sold"
+      if (itemIds.length > 0) {
+        await bulkToggleSold(itemIds);
+        console.log("Estados actualizados correctamente");
+      }
+
+      // Luego generar el PDF
       const pdfBlob = await generateInvoiceTestPdf(invoiceBody);
       const url = URL.createObjectURL(pdfBlob);
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+      // Limpiar la selección después de generar el PDF exitosamente
+      setSelectedProducts([]);
+      
+      // Refetch de productos para actualizar la lista con los nuevos estados
+      await refetchProducts();
+      
+      // Resetear el ProductSelector a los steps iniciales
+      setResetKey(prev => prev + 1);
     } catch (err) {
-      console.error("Error generando PDF:", err);
+      console.error("Error en el proceso:", err);
     }
   };
 
   const canGeneratePDF = selectedProducts.length > 0;
+  const isProcessing = isGeneratingPdf || isTogglingStatus;
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
@@ -151,6 +180,7 @@ const Factura = () => {
                 </h3>
               </div>
               <ProductSelector
+                key={resetKey}
                 onAddProduct={handleAddProduct}
                 selectedProducts={selectedProducts}
               />
@@ -182,11 +212,11 @@ const Factura = () => {
               variant="generate"
               size="lg"
               className="w-full"
-              disabled={!canGeneratePDF || isGeneratingPdf}
+              disabled={!canGeneratePDF || isProcessing}
               onClick={handleGeneratePDF}
             >
               <FileText className="w-5 h-5 mr-2" />
-              {isGeneratingPdf ? "Generando..." : "Generar PDF de Cotización"}
+              {isProcessing ? "Procesando..." : "Generar PDF de Cotización"}
             </Button>
 
             {!canGeneratePDF && (
