@@ -1,7 +1,7 @@
 // Servicio con TanStack Query para llamadas a API
 
-import { useQuery, useMutation, type UseQueryOptions,type UseMutationOptions } from "@tanstack/react-query";
-import { API_BASE } from "../utils/constants";
+import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
+import { API_URL } from "../utils/constants";
 import type { Product } from "../types/productsType";
 import type { Stats, LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types";
 
@@ -21,7 +21,7 @@ class ApiServiceClass {
     code: string,
     serviceId: string
   ): Promise<DeviceApiResponse> {
-    const response = await fetch(`${API_BASE}/api/devices/consultar`, {
+    const response = await fetch(`${API_URL}/api/devices/consultar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -40,14 +40,14 @@ class ApiServiceClass {
   }
 
   async getStats(): Promise<Stats> {
-    const response = await fetch(`${API_BASE}/api/sheets/stats`);
+    const response = await fetch(`${API_URL}/api/sheets/stats`);
     if (!response.ok) throw new Error("Error al cargar estadísticas");
     return response.json();
   }
 
   async getBalance(): Promise<number | null> {
     try {
-      const response = await fetch(`${API_BASE}/api/devices/balance`);
+      const response = await fetch(`${API_URL}/api/devices/balance`);
       if (!response.ok) return null;
       const data = await response.json();
       return data.balance ?? null;
@@ -57,7 +57,7 @@ class ApiServiceClass {
   }
 
   async getProducts(): Promise<Product[]> {
-    const response = await fetch(`${API_BASE}/api/products`);
+    const response = await fetch(`${API_URL}/api/products`);
 
     if (!response.ok) {
       throw new Error("Error al cargar productos");
@@ -78,7 +78,7 @@ class ApiServiceClass {
 
   async getServices(): Promise<ServiceResponse> {
     try {
-      const response = await fetch(`${API_BASE}/api/devices/services`);
+      const response = await fetch(`${API_URL}/api/devices/services`);
       if (!response.ok) return {
         error: "true",
         meessage: "error en la respuesta",
@@ -100,7 +100,7 @@ class ApiServiceClass {
 
   async getLastOrder(): Promise<LastOrderInfo | null> {
     try {
-      const response = await fetch(`${API_BASE}/api/devices/last-order`);
+      const response = await fetch(`${API_URL}/api/devices/last-order`);
       if (!response.ok) return null;
       return response.json();
     } catch {
@@ -109,7 +109,7 @@ class ApiServiceClass {
   }
 
   async getInvoiceTestPdfPreview(invoiceBody: unknown): Promise<Blob> {
-    const response = await fetch(`${API_BASE}/api/invoices/generate/pdf`, {
+    const response = await fetch(`${API_URL}/api/invoices/generate/pdf`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(invoiceBody),
@@ -134,7 +134,7 @@ class ApiServiceClass {
     full_name: string;
     document_number: string;
   }> {
-    const response = await fetch(`${API_BASE}/api/reniec/dni?numero=${dniNumber}`, {
+    const response = await fetch(`${API_URL}/api/reniec/dni?numero=${dniNumber}`, {
       method: "GET",
     });
 
@@ -147,7 +147,7 @@ class ApiServiceClass {
   }
 
   async bulkToggleSoldItems(itemIds: number[]): Promise<void> {
-    const response = await fetch(`${API_BASE}/api/products/items/bulk-toggle-sold`, {
+    const response = await fetch(`${API_URL}/api/products/items/bulk-toggle-sold`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ item_ids: itemIds }),
