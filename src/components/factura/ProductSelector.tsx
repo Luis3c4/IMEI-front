@@ -180,14 +180,14 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
 
     selectedProduct.product_variants
       .filter(variant => {
-        const capacityMatch = selectedCapacity === "N/A" 
-          ? variant.capacity === null 
+        const capacityMatch = selectedCapacity === "N/A"
+          ? variant.capacity === null
           : variant.capacity === selectedCapacity;
-        
-        const colorMatch = selectedColor === "N/A" 
-          ? variant.color === null 
+
+        const colorMatch = selectedColor === "N/A"
+          ? variant.color === null
           : variant.color === selectedColor;
-        
+
         return capacityMatch && colorMatch;
       })
       .forEach(variant => {
@@ -227,14 +227,14 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
 
   const handleModelSelect = (model: ProductModel) => {
     setSelectedModel(model);
-    
+
     // Verificar si el producto tiene color y/o capacidad null
     const selectedProduct = products.find(p => p.id === model.base_product_id);
     if (selectedProduct && selectedProduct.product_variants.length > 0) {
       const firstVariant = selectedProduct.product_variants[0];
       const hasNoCapacity = firstVariant.capacity === null;
       const hasNoColor = firstVariant.color === null;
-      
+
       if (hasNoCapacity && hasNoColor) {
         // Si ambos son null, ir directamente a serial
         setSelectedCapacity("N/A");
@@ -265,7 +265,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
 
   const handleCapacitySelect = (capacity: string) => {
     setSelectedCapacity(capacity);
-    
+
     // Si el producto no tiene color, saltar directamente a serial
     if (productHasNoColorOrCapacity.hasNoColor) {
       setSelectedColor("N/A");

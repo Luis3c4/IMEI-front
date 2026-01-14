@@ -11,23 +11,27 @@ import { ScanBarcode } from "lucide-react";
 import Scanner from "../components/Scanner";
 import Toast from "../components/Toast";
 import InfoCard from "../components/InfoCard";
-import type { ToastState, DeviceInfo, Stats, Service } from "../types";
+import type { ToastState, Stats, Service } from "../types";
 import { TOAST_DURATION } from "../utils/constants";
 import {
   useBalance,
-  useCheckDevice,
   useServices,
   useStats as useStatsQuery,
 } from "../services/api-query";
+import { useIMEIChecker } from "../hooks/useIMEIChecker";
 
 export default function IMEICheck() {
-  // Estados principales
-  const [serviceId, setServiceId] = useState("17");
-  const [inputValue, setInputValue] = useState("");
-  const [result, setResult] = useState<DeviceInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Estados UI
   const [toast, setToast] = useState<ToastState | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+
+  // Toast handler
+  const showToast = (message: string, type: ToastState["type"] = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), TOAST_DURATION);
+  };
+
+  // Datos de la API
   const {
     data: statsData,
     error: statsError,
@@ -57,6 +61,22 @@ export default function IMEICheck() {
   const services: Service[] = servicesResponse?.services ?? [];
   const loadingServices = servicesLoading || servicesFetching;
 
+  const refreshData = () =>
+    Promise.all([refetchStats(), refetchBalance(), refetchServices()]);
+
+  // Hook personalizado para la lógica IMEI
+  const {
+    serviceId,
+    setServiceId,
+    inputValue,
+    setInputValue,
+    loading: isChecking,
+    result,
+    error,
+    checkDevice,
+    clearResult,
+  } = useIMEIChecker(showToast, refreshData);
+
   // Bloquear scroll cuando el scanner está abierto
   useEffect(() => {
     if (scannerOpen) {
@@ -66,29 +86,6 @@ export default function IMEICheck() {
       document.body.style.overflow = "unset";
     };
   }, [scannerOpen]);
-
-  const showToast = (message: string, type: ToastState["type"] = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), TOAST_DURATION);
-  };
-
-  const refreshData = () =>
-    Promise.all([refetchStats(), refetchBalance(), refetchServices()]);
-
-  const { mutateAsync: runCheckDevice, isPending: isChecking } = useCheckDevice({
-    onSuccess: async (deviceInfo) => {
-      setResult(deviceInfo.data);                      
-      setInputValue("");
-      showToast("Dispositivo encontrado", "success");
-      await refreshData();
-    },
-    onError: (err) => {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error al verificar el dispositivo";
-      setError(errorMessage);
-      showToast(errorMessage, "error");
-    },
-  });
 
   useEffect(() => {
     if (statsError || balanceError || servicesError) {
@@ -103,15 +100,7 @@ export default function IMEICheck() {
   }, [services, serviceId]);
 
   const handleConsultar = async () => {
-    if (!inputValue.trim()) {
-      setError("Por favor ingresa un Serial Number o IMEI");
-      return;
-    }
-
-    setError(null);
-    setResult(null);
-
-    await runCheckDevice({ code: inputValue, serviceId });
+    await checkDevice(inputValue);
   };
 
   const handleAbrirSheet = () => {
@@ -122,9 +111,7 @@ export default function IMEICheck() {
   };
 
   const handleNuevaConsulta = () => {
-    setInputValue("");
-    setResult(null);
-    setError(null);
+    clearResult();
   };
 
   const handleScan = (value: string) => {

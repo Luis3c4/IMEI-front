@@ -47,7 +47,7 @@ const Factura = () => {
   const handleGeneratePDF = async () => {
     // Extraer los IDs de los product_items de los productos seleccionados
     const itemIds: number[] = [];
-    
+
     selectedProducts.forEach((product) => {
       product.product_items?.forEach((item) => {
         itemIds.push(item.id);
@@ -58,10 +58,10 @@ const Factura = () => {
 
     // Crear el body con la estructura de Invoice
     const invoiceBody = {
-      order_date: new Date().toLocaleDateString("en-US", { 
-        year: "numeric", 
-        month: "long", 
-        day: "2-digit" 
+      order_date: new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "2-digit"
       }),
       order_number: `W${Date.now().toString().slice(-10)}`, // Generar número único
       customer: {
@@ -79,10 +79,10 @@ const Factura = () => {
       })),
       invoice_info: {
         invoice_number: `MA${Date.now().toString().slice(-8)}`, // Generar número único
-        invoice_date: new Date().toLocaleDateString("en-US", {  
-          year: "numeric", 
-          month: "long", 
-          day: "2-digit" 
+        invoice_date: new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "2-digit"
         })
       }
     };
@@ -104,10 +104,10 @@ const Factura = () => {
 
       // Limpiar la selección después de generar el PDF exitosamente
       setSelectedProducts([]);
-      
+
       // Refetch de productos para actualizar la lista con los nuevos estados
       await refetchProducts();
-      
+
       // Resetear el ProductSelector a los steps iniciales
       setResetKey(prev => prev + 1);
     } catch (err) {
