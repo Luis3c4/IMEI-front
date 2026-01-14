@@ -30,7 +30,7 @@ export const FacturaRoute = createRoute({
 // Ruta protegida: IMEI Check (predeterminada después de login)
 export const imeiCheckRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
-  path: '/imei-check',
+  path: 'imei-check',
   component: IMEICheck,
 })
 
