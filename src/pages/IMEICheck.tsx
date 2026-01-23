@@ -236,6 +236,13 @@ export default function IMEICheck() {
                   />
                 </div>
 
+                {/* Recordatorio para productos Apple */}
+                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <p className="text-sm text-yellow-800">
+                    <span className="font-semibold">Nota:</span> Para dispositivos <span className="font-semibold">IPHONE</span> y <span className="font-semibold">MACKBOOS</span>, selecciona <span className="font-semibold">APPLE PART NUMBER - MPN</span> en el selector de Servicio DHRU.
+                  </p>
+                </div>
+
                 {/* Botón Consultar */}
                 <button
                   onClick={handleConsultar}
