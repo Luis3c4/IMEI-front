@@ -20,6 +20,7 @@ export interface ProductVariant {
     color:          string;
     price:          number;
     capacity:       string;
+    product_number?: string;
     product_items:  ProductItem[];
     quantity:       number;
     serial_numbers: string[];
@@ -29,6 +30,7 @@ export interface ProductItem {
     id:            number;
     status:        Status;
     serial_number: string;
+    product_number?: string;
 }
 
 export const Status = {

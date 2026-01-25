@@ -24,6 +24,7 @@ export default function IMEICheck() {
   // Estados UI
   const [toast, setToast] = useState<ToastState | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [partNumber, setPartNumber] = useState("");
 
   // Toast handler
   const showToast = (message: string, type: ToastState["type"] = "success") => {
@@ -100,7 +101,7 @@ export default function IMEICheck() {
   }, [services, serviceId]);
 
   const handleConsultar = async () => {
-    await checkDevice(inputValue);
+    await checkDevice(inputValue, partNumber);
   };
 
   const handleAbrirSheet = () => {
@@ -112,6 +113,7 @@ export default function IMEICheck() {
 
   const handleNuevaConsulta = () => {
     clearResult();
+    setPartNumber("");
   };
 
   const handleScan = (value: string) => {
@@ -230,16 +232,31 @@ export default function IMEICheck() {
                     onChange={(e) =>
                       setInputValue(e.target.value.toUpperCase())
                     }
-                    onKeyPress={(e) => e.key === "Enter" && handleConsultar()}
+                    onKeyDown={(e) => e.key === "Enter" && handleConsultar()}
                     placeholder="Ej: MC7M6JRDQ7"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg font-mono"
                   />
                 </div>
 
+                  {/* Input Part Number (Opcional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Part Number <span className="text-xs text-gray-500">(Opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={partNumber}
+                      onChange={(e) => setPartNumber(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => e.key === "Enter" && handleConsultar()}
+                      placeholder="Ingrese part number"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg font-mono"
+                    />
+                  </div>
+
                 {/* Recordatorio para productos Apple */}
                 <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                   <p className="text-sm text-yellow-800">
-                    <span className="font-semibold">Nota:</span> Para dispositivos <span className="font-semibold">IPHONE</span> y <span className="font-semibold">MACKBOOS</span>, selecciona <span className="font-semibold">APPLE PART NUMBER - MPN</span> en el selector de Servicio DHRU.
+                    <span className="font-semibold">Nota:</span> Para dispositivos <span className="font-semibold">MACBOOKS</span>, coloca el <span className="font-semibold">PART NUMBER</span> para precisión en la consulta.
                   </p>
                 </div>
 

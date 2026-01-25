@@ -29,7 +29,7 @@ export function useIMEIChecker(
     },
   });
 
-  const checkDevice = async (code: string) => {
+  const checkDevice = async (code: string, productNumber?: string) => {
     if (!code.trim()) {
       setError("Por favor ingresa un Serial Number o IMEI");
       return;
@@ -37,7 +37,7 @@ export function useIMEIChecker(
 
     setError(null);
     setResult(null);
-    await runCheckDevice({ code, serviceId }).catch(() => { });
+    await runCheckDevice({ code, serviceId, productNumber }).catch(() => { });
   };
 
   const clearResult = () => {

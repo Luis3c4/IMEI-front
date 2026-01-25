@@ -39,6 +39,7 @@ interface SerialEntry {
   price: number;
   capacity: string;
   status: string;
+  product_number?: string;
 }
 
 export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelectorProps) => {
@@ -206,6 +207,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
               price: variant.price,
               capacity: variant.capacity || "N/A",
               status: item.status,
+              product_number: item.product_number ?? variant.product_number,
             });
           }
         });
@@ -288,10 +290,12 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
       color: product.color,
       price: product.price,
       capacity: product.capacity,
+      product_number: product.product_number,
       product_items: [{
         id: product.itemId,
         status: product.status as any,
         serial_number: product.displaySerial,
+        product_number: product.product_number,
       }],
       quantity: 1,
       serial_numbers: [product.displaySerial],
