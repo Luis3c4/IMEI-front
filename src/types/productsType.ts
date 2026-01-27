@@ -17,10 +17,11 @@ export interface Product {
 
 export interface ProductVariant {
     id:             number;
-    color:          string;
+    color:          string | null;
     price:          number;
-    capacity:       string;
+    capacity:       string | null;
     product_number?: string;
+    product_numbers?: string[];
     product_items:  ProductItem[];
     quantity:       number;
     serial_numbers: string[];
