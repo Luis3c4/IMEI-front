@@ -115,7 +115,7 @@ const Factura = () => {
     }
   };
 
-  const canGeneratePDF = selectedProducts.length > 0;
+  const canGeneratePDF = selectedProducts.length > 0 && customerData !== null;
   const isProcessing = isGeneratingPdf || isTogglingStatus;
 
   return (
@@ -221,7 +221,10 @@ const Factura = () => {
 
             {!canGeneratePDF && (
               <p className="text-xs text-muted-foreground text-center">
-                Agrega al menos un producto para generar el PDF
+                {!customerData 
+                  ? "Consulta el DNI del cliente y agrega productos para generar el PDF"
+                  : "Agrega al menos un producto para generar el PDF"
+                }
               </p>
             )}
           </div>

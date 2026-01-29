@@ -32,8 +32,11 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
     try {
       const response = await refetch();
       if (response.data) {
+        // Construir el nombre completo en formato: Nombres + Apellido Paterno + Apellido Materno
+        const fullName = `${response.data.first_name} ${response.data.first_last_name} ${response.data.second_last_name}`.trim();
+        
         const customerData = {
-          full_name: response.data.full_name,
+          full_name: fullName,
           document_number: response.data.document_number,
         };
         setResult(customerData);
