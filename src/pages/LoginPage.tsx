@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from '@tanstack/react-router'
-import { Mail, Lock, User } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +14,7 @@ const LoginPage = () => {
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const { login, signup, isAuthenticated } = useAuth()
 
@@ -149,13 +150,24 @@ const LoginPage = () => {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
-                    className="pl-12 h-12 bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:border-blue-600 focus:ring-blue-600/20 rounded-lg transition-all"
+                    className="pl-12 pr-12 h-12 bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:border-blue-600 focus:ring-blue-600/20 rounded-lg transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
               </div>
 
