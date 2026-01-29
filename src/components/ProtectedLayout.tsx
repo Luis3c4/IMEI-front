@@ -1,4 +1,4 @@
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, useNavigate } from '@tanstack/react-router'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { AppSidebar } from '@/components/navbar/app-sidebar'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -9,10 +9,10 @@ import { useHeaderInfo } from '@/hooks/useHeaderInfo'
 export const ProtectedLayout = () => {
   const { user, logout } = useAuth()
   const headerInfo = useHeaderInfo()
+  const navigate = useNavigate()
 
   const handleLoginClick = () => {
-    // Redirect to login or open login modal
-    window.location.href = '/login'
+    navigate({ to: '/login' })
   }
 
   const handleUserClick = () => {
@@ -27,7 +27,7 @@ export const ProtectedLayout = () => {
           <Header 
             user={user ? { name: user.name } : null}
             onLoginClick={handleLoginClick}
-            onUserClick={handleUserClick}
+            onLogoutClick={handleUserClick}
             title={headerInfo.title}
             description={headerInfo.description}
           />

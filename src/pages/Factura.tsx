@@ -70,7 +70,7 @@ const Factura = () => {
       },
       products: selectedProducts.map((product) => ({
         name: product.baseProductName,
-        product_number: product.id.toString(),
+        product_number: product.product_number ?? product.id.toString(),
         serial_number: product.serial_numbers?.[0] || `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
         item_price: product.price,
         quantity_ordered: 1,

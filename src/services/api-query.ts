@@ -19,7 +19,8 @@ export const queryKeys = {
 class ApiServiceClass {
   async checkDevice(
     code: string,
-    serviceId: string
+    serviceId: string,
+    productNumber?: string
   ): Promise<DeviceApiResponse> {
     const response = await fetch(`${API_URL}/api/devices/consultar`, {
       method: "POST",
@@ -28,6 +29,9 @@ class ApiServiceClass {
         input_value: code,
         service_id: serviceId,
         formato: "beta",
+        ...(productNumber?.trim()
+          ? { product_number: productNumber.trim() }
+          : {}),
       }),
     });
 
@@ -251,11 +255,12 @@ export function useCheckDevice(
   options?: UseMutationOptions<
     DeviceApiResponse,
     Error,
-    { code: string; serviceId: string }
+    { code: string; serviceId: string; productNumber?: string }
   >
 ) {
   return useMutation({
-    mutationFn: ({ code, serviceId }) => apiService.checkDevice(code, serviceId),
+    mutationFn: ({ code, serviceId, productNumber }) =>
+      apiService.checkDevice(code, serviceId, productNumber),
     ...options,
   });
 }
