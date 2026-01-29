@@ -66,7 +66,7 @@ const Factura = () => {
       order_number: `W${Date.now().toString().slice(-10)}`, // Generar número único
       customer: {
         name: customerData?.full_name || "Cliente sin nombre",
-        customer_number: customerData?.document_number || "Sin documento"
+        customer_number: `9000${Math.floor(Math.random() * 100).toString().padStart(2, '0')}`
       },
       products: selectedProducts.map((product) => ({
         name: product.baseProductName,
