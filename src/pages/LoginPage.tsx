@@ -74,8 +74,8 @@ const LoginPage = () => {
           {/* Contenedor principal */}
           <div className="p-8">
             <div className="text-center mb-8">
-              <div className="w-24 h-24 rounded-lg bg-slate-800 flex items-center justify-center mx-auto mb-6">
-                <img src="/falcon.png" alt="Falcon Logo" className="w-10 h-10" />
+              <div className="w-24 h-24 rounded-lg flex items-center justify-center mx-auto mb-6">
+                <img src="/falcontec2.PNG" alt="Falcon Logo" className="w-full h-full object-contain" />
               </div>
               <h1 className="text-3xl font-bold text-white mb-2">
                 {isSignUp ? 'Crear Cuenta' : 'Iniciar Sesión'}
