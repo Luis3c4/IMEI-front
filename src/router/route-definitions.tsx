@@ -5,6 +5,7 @@ import App from '../App'
 import IMEICheck from '@/pages/IMEICheck'
 import LoginPage from '@/pages/LoginPage'
 import Factura from '@/pages/Factura'
+import Inventario from '@/pages/Inventario'
 import { ProtectedLayout } from '@/components/ProtectedLayout'
 
 // Ruta layout protegida con shell (sidebar) compartida
@@ -25,6 +26,12 @@ export const FacturaRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: 'factura',
   component: Factura,
+})
+
+export const InventarioRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: 'inventario',
+  component: Inventario,
 })
 
 // Ruta protegida: IMEI Check (predeterminada después de login)

@@ -8,7 +8,7 @@ interface SelectedProduct extends ProductVariant {
   baseProductId: number;
   baseProductName: string;
   category: string;
-  description: string;
+  description?: string;
 }
 
 interface SelectedProductsListProps {
