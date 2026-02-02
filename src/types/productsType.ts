@@ -9,13 +9,12 @@ export interface Product {
     id:               number;
     name:             string;
     category:         string;
-    description:      string;
     created_at:       Date;
     updated_at:       Date;
     product_variants: ProductVariant[];
 }
 
-export interface ProductVariant {
+export interface    ProductVariant {
     id:             number;
     color:          string | null;
     price:          number;
@@ -25,6 +24,7 @@ export interface ProductVariant {
     product_items:  ProductItem[];
     quantity:       number;
     serial_numbers: string[];
+    model_description?: string;
 }
 
 export interface ProductItem {

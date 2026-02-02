@@ -78,8 +78,8 @@ const data = {
       icon: Bot,
       items: [
         {
-          title: "Genesis",
-          url: "#",
+          title: "Inventario",
+          url: "/inventario",
         },
         {
           title: "Explorer",

@@ -10,7 +10,7 @@ interface SelectedProduct extends ProductVariant {
   baseProductId: number;
   baseProductName: string;
   category: string;
-  description: string;
+  description?: string;
 }
 
 interface ProductSelectorProps {
@@ -32,7 +32,7 @@ interface SerialEntry {
   baseProductId: number;
   baseProductName: string;
   category: string;
-  description: string;
+  description?: string;
   variantId: number;
   itemId: number;
   color: string;
@@ -210,7 +210,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
               baseProductName: selectedProduct.name,
               itemId: item.id,
               category: selectedProduct.category,
-              description: selectedProduct.description,
+              description: selectedProduct.product_variants[0]?.model_description,
               variantId: variant.id,
               color: variant.color || "N/A",
               price: variant.price,

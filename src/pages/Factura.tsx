@@ -12,7 +12,7 @@ interface SelectedProduct extends ProductVariant {
   baseProductId: number;
   baseProductName: string;
   category: string;
-  description: string;
+  description?: string;
 }
 
 interface DniResult {
@@ -69,7 +69,7 @@ const Factura = () => {
         customer_number: `9000${Math.floor(Math.random() * 100).toString().padStart(2, '0')}`
       },
       products: selectedProducts.map((product) => ({
-        name: product.baseProductName,
+        name: product.description || product.baseProductName,
         product_number: product.product_number ?? product.id.toString(),
         serial_number: product.serial_numbers?.[0] || `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
         item_price: product.price,
@@ -86,9 +86,8 @@ const Factura = () => {
         })
       }
     };
-
     console.log("Body para enviar al backend:", JSON.stringify(invoiceBody, null, 2));
-
+    console.log();
     try {
       // Primero cambiar el estado de los productos a "sold"
       if (itemIds.length > 0) {
