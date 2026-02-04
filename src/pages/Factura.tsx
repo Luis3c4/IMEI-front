@@ -18,6 +18,7 @@ interface SelectedProduct extends ProductVariant {
 interface DniResult {
   full_name: string;
   document_number: string;
+  phone: string;
 }
 
 const Factura = () => {
@@ -66,7 +67,8 @@ const Factura = () => {
       order_number: `W${Date.now().toString().slice(-10)}`, // Generar número único
       customer: {
         name: customerData?.full_name || "Cliente sin nombre",
-        customer_number: `9000${Math.floor(Math.random() * 100).toString().padStart(2, '0')}`
+        dni: customerData?.document_number || "",
+        phone: customerData?.phone || ""
       },
       products: selectedProducts.map((product) => ({
         name: product.description || product.baseProductName,

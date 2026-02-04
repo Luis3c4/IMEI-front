@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, User, IdCard, AlertCircle } from "lucide-react";
+import { Search, User, IdCard, AlertCircle, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useDniSearch } from "@/services/api-query";
@@ -7,6 +7,7 @@ import { useDniSearch } from "@/services/api-query";
 interface DniResult {
   full_name: string;
   document_number: string;
+  phone: string;
 }
 
 interface DniSearchProps {
@@ -15,6 +16,7 @@ interface DniSearchProps {
 
 export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
   const [dni, setDni] = useState("");
+  const [phone, setPhone] = useState("");
   const [result, setResult] = useState<DniResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +27,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
   });
 
   const handleSearch = async () => {
-    if (dni.length !== 8) return;
+    if (dni.length !== 8 || phone.trim() === "") return;
     
     setError(null);
     
@@ -38,6 +40,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
         const customerData = {
           full_name: fullName,
           document_number: response.data.document_number,
+          phone: phone.trim(),
         };
         setResult(customerData);
         onCustomerDataChange?.(customerData);
@@ -64,8 +67,17 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
     }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPhone(value);
+    if (dni.length === 8 && value.trim() === "") {
+      setResult(null);
+      onCustomerDataChange?.(null);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && dni.length === 8) {
+    if (e.key === "Enter" && dni.length === 8 && phone.trim() !== "") {
       handleSearch();
     }
   };
@@ -73,7 +85,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
   return (
     <div className="space-y-4">
       <div className="flex gap-3">
-        <div className="relative flex-1">
+        <div className="relative flex-[17]">
           <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
@@ -84,10 +96,23 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
             className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary"
           />
         </div>
+        
+        <div className="relative flex-[17]">
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Teléfono"
+            value={phone}
+            onChange={handlePhoneChange}
+            onKeyDown={handleKeyDown}
+            className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary"
+          />
+        </div>
+        
         <Button
           onClick={handleSearch}
-          disabled={dni.length !== 8 || isFetching}
-          className="h-11 px-6"
+          disabled={dni.length !== 8 || phone.trim() === "" || isFetching}
+          className="h-11 flex-[6]"
         >
           <Search className="w-4 h-4 mr-2" />
           {isFetching ? "Buscando..." : "Buscar"}
@@ -131,6 +156,15 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
               </span>
               <span className="text-sm font-medium text-foreground font-mono">
                 {result.document_number}
+              </span>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide min-w-25">
+                Teléfono
+              </span>
+              <span className="text-sm font-medium text-foreground font-mono">
+                {result.phone}
               </span>
             </div>
           </div>
