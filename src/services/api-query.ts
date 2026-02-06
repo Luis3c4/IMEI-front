@@ -236,6 +236,7 @@ export function useDniSearch(
     second_last_name: string;
     full_name: string;
     document_number: string;
+    phone?: string;
   }>, "queryKey" | "queryFn">
 ) {
   return useQuery({

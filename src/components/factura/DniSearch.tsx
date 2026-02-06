@@ -7,7 +7,7 @@ import { useDniSearch } from "@/services/api-query";
 interface DniResult {
   full_name: string;
   document_number: string;
-  phone: string;
+  phone?: string;
 }
 
 interface DniSearchProps {
@@ -27,7 +27,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
   });
 
   const handleSearch = async () => {
-    if (dni.length !== 8 || phone.trim() === "") return;
+    if (dni.length !== 8) return;
     
     setError(null);
     
@@ -37,10 +37,18 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
         // Construir el nombre completo en formato: Nombres + Apellido Paterno + Apellido Materno
         const fullName = `${response.data.first_name} ${response.data.first_last_name} ${response.data.second_last_name}`.trim();
         
+        // Usar el teléfono de la respuesta si existe (BD), sino usar el del input
+        const phoneToUse = response.data.phone || phone.trim() || "";
+        
+        // Si viene teléfono de la BD, actualizar el input
+        if (response.data.phone) {
+          setPhone(response.data.phone);
+        }
+        
         const customerData = {
           full_name: fullName,
           document_number: response.data.document_number,
-          phone: phone.trim(),
+          phone: phoneToUse,
         };
         setResult(customerData);
         onCustomerDataChange?.(customerData);
@@ -70,14 +78,10 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setPhone(value);
-    if (dni.length === 8 && value.trim() === "") {
-      setResult(null);
-      onCustomerDataChange?.(null);
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && dni.length === 8 && phone.trim() !== "") {
+    if (e.key === "Enter" && dni.length === 8) {
       handleSearch();
     }
   };
@@ -101,7 +105,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Teléfono"
+            placeholder="Teléfono (opcional)"
             value={phone}
             onChange={handlePhoneChange}
             onKeyDown={handleKeyDown}
@@ -111,7 +115,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
         
         <Button
           onClick={handleSearch}
-          disabled={dni.length !== 8 || phone.trim() === "" || isFetching}
+          disabled={dni.length !== 8 || isFetching}
           className="h-11 flex-[6]"
         >
           <Search className="w-4 h-4 mr-2" />
@@ -164,7 +168,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
                 Teléfono
               </span>
               <span className="text-sm font-medium text-foreground font-mono">
-                {result.phone}
+                {result.phone || "No especificado"}
               </span>
             </div>
           </div>
