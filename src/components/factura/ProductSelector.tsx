@@ -210,7 +210,7 @@ export const ProductSelector = ({ onAddProduct, selectedProducts }: ProductSelec
               baseProductName: selectedProduct.name,
               itemId: item.id,
               category: selectedProduct.category,
-              description: selectedProduct.product_variants[0]?.model_description,
+              description: variant.model_description,
               variantId: variant.id,
               color: variant.color || "N/A",
               price: variant.price,
