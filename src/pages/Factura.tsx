@@ -18,7 +18,7 @@ interface SelectedProduct extends ProductVariant {
 interface DniResult {
   full_name: string;
   document_number: string;
-  phone: string;
+  phone?: string;
 }
 
 const Factura = () => {
