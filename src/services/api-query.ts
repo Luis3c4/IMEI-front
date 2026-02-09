@@ -4,6 +4,7 @@ import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } 
 import { API_URL } from "../utils/constants";
 import type { Product } from "../types/productsType";
 import type { Stats, LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types";
+import { supabase } from "../lib/supabase";
 
 // ============= Query Keys =============
 export const queryKeys = {
@@ -113,9 +114,19 @@ class ApiServiceClass {
   }
 
   async getInvoiceTestPdfPreview(invoiceBody: unknown): Promise<Blob> {
+    // Obtener el token JWT de la sesión actual de Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      throw new Error("No hay sesión activa. Por favor, inicia sesión.");
+    }
+
     const response = await fetch(`${API_URL}/api/invoices/generate/pdf`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`  // Agregar JWT token
+      },
       body: JSON.stringify(invoiceBody),
     });
 
@@ -123,7 +134,7 @@ class ApiServiceClass {
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         const error = await response.json();
-        throw new Error(error.error || "Error al generar el PDF");
+        throw new Error(error.detail || error.error || "Error al generar el PDF");
       }
       throw new Error("Error al generar el PDF");
     }
