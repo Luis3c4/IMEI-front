@@ -71,6 +71,8 @@ const Factura = () => {
         phone: customerData?.phone || ""
       },
       products: selectedProducts.map((product) => ({
+        product_id: product.baseProductId, // FK a products.id (REQUERIDO)
+        variant_id: product.id, // FK a product_variants.id (opcional)
         name: product.description || product.baseProductName,
         product_number: product.product_number ?? product.id.toString(),
         serial_number: product.serial_numbers?.[0] || `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
