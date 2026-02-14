@@ -26,7 +26,12 @@ const ProductRow = ({ product }: ProductRowProps) => {
           </div>
         </TableCell>
         <TableCell>{product.totalQuantity}</TableCell>
-        <TableCell>{product.capacities.join("/")}</TableCell>
+        <TableCell>
+          {product.capacities.length > 0 
+            ? product.capacities.filter(c => c !== null).join("/") || "—"
+            : "—"
+          }
+        </TableCell>
         <TableCell>
           <div className="flex gap-1.5">
             {product.colors.map((color, idx) => (

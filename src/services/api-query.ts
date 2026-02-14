@@ -4,6 +4,7 @@ import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } 
 import { API_URL } from "../utils/constants";
 import type { Product } from "../types/productsType";
 import type { Stats, LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types";
+import type { Product as HierarchicalProduct, ProductHierarchyResponse } from "../types/mockProductsType";
 import { supabase } from "../lib/supabase";
 
 // ============= Query Keys =============
@@ -11,6 +12,7 @@ export const queryKeys = {
   stats: ["stats"] as const,
   balance: ["balance"] as const,
   products: ["products"] as const,
+  inventory: (category?: string) => ["inventory", category] as const,
   services: ["services"] as const,
   lastOrder: ["lastOrder"] as const,
   dni: (dniNumber: string) => ["dni", dniNumber] as const,
@@ -79,6 +81,26 @@ class ApiServiceClass {
     }
 
     return payload.data as Product[];
+  }
+
+  async getInventory(category?: string): Promise<HierarchicalProduct[]> {
+    const url = category 
+      ? `${API_URL}/api/products/inventory?category=${encodeURIComponent(category)}`
+      : `${API_URL}/api/products/inventory`;
+    
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error("Error al cargar inventario");
+    }
+
+    const payload: ProductHierarchyResponse = await response.json();
+
+    if (!payload?.success || !Array.isArray(payload?.data)) {
+      throw new Error("Error al cargar inventario");
+    }
+
+    return payload.data;
   }
 
   async getServices(): Promise<ServiceResponse> {
@@ -210,6 +232,20 @@ export function useProducts(options?: Omit<UseQueryOptions<Product[]>, "queryKey
   return useQuery({
     queryKey: queryKeys.products,
     queryFn: () => apiService.getProducts(),
+    ...options,
+  });
+}
+
+/**
+ * Hook para obtener inventario jerárquico
+ */
+export function useInventory(
+  category?: string,
+  options?: Omit<UseQueryOptions<HierarchicalProduct[]>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.inventory(category),
+    queryFn: () => apiService.getInventory(category),
     ...options,
   });
 }

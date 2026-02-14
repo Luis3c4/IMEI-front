@@ -15,7 +15,7 @@ const ProductItemRow = ({ item }: ProductItemRowProps) => {
       <TableCell>
         <span className="font-mono">{item.productNumber}</span>
       </TableCell>
-      <TableCell>{item.capacity}</TableCell>
+      <TableCell>{item.capacity || "—"}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <ColorDot color={item.colorHex} size="sm" />

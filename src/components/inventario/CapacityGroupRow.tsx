@@ -26,7 +26,7 @@ const CapacityGroupRow = ({ group }: CapacityGroupRowProps) => {
           </div>
         </TableCell>
         <TableCell>{group.quantity}</TableCell>
-        <TableCell>{group.capacity}</TableCell>
+        <TableCell>{group.capacity || "Sin capacidad"}</TableCell>
         <TableCell>
           <div className="flex gap-1.5">
             {group.colors.map((color, idx) => (
