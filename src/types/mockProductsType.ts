@@ -3,7 +3,7 @@ export interface ProductItem {
   productNumber: string;
   capacity: string | null;
   color: string;
-  colorHex: string;
+  colorHex: string | null;
 }
 
 export interface CapacityGroup {
