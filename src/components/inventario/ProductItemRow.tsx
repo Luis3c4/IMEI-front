@@ -8,7 +8,7 @@ interface ProductItemRowProps {
 
 const ProductItemRow = ({ item }: ProductItemRowProps) => {
   return (
-    <TableRow className="bg-primary/90 text-primary-foreground border-b border-primary-foreground/10">
+    <TableRow className="bg-primary/90 text-primary-foreground border-b border-primary-foreground/10 hover:bg-primary/95">
       <TableCell className="pl-16">
         <span className="font-mono font-semibold">{item.serial}</span>
       </TableCell>
@@ -18,7 +18,7 @@ const ProductItemRow = ({ item }: ProductItemRowProps) => {
       <TableCell>{item.capacity || "—"}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
-          <ColorDot color={item.colorHex} size="sm" />
+          {item.colorHex && <ColorDot color={item.colorHex} size="sm" />}
           <span className="text-sm">{item.color}</span>
         </div>
       </TableCell>
