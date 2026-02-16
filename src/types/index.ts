@@ -1,11 +1,5 @@
 // Tipos de datos principales de la aplicación
 
-// Tipos para el Header dinámico según la ruta
-export interface HeaderInfo {
-  title: string
-  description: string
-}
-
 export interface DeviceInfo {
   Demo_Unit: string;
   Estimated_Purchase_Date: string;
