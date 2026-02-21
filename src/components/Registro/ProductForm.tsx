@@ -48,7 +48,7 @@ const ProductForm = ({ product, onRegister }: ProductFormProps) => {
     <div className="animate-scale-in space-y-6 rounded-2xl glass-card p-6">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-accent">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent">
           <Icon className="h-5 w-5 text-accent-foreground" />
         </div>
         <div className="min-w-0">
@@ -61,7 +61,7 @@ const ProductForm = ({ product, onRegister }: ProductFormProps) => {
 
       {/* Color */}
       <div className="space-y-2.5">
-        <label className="text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-category-label">
+        <label className="text-[0.6875rem] font-bold uppercase tracking-widest text-category-label">
           Color
         </label>
         <div className="flex flex-wrap gap-1.5">
@@ -81,7 +81,7 @@ const ProductForm = ({ product, onRegister }: ProductFormProps) => {
 
       {/* Capacity */}
       <div className="space-y-2.5">
-        <label className="text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-category-label">
+        <label className="text-[0.6875rem] font-bold uppercase tracking-widest text-category-label">
           {capacityLabel}
         </label>
         <div className="flex flex-wrap gap-1.5">

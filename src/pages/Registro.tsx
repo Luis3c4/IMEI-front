@@ -84,7 +84,7 @@ const Index = () => {
                       }}
                       className="group glass-card glass-card-hover flex w-full items-center gap-3 rounded-xl px-4 py-3.5 text-left transition-all duration-200"
                     >
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-accent">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent">
                         <Icon className="h-4.5 w-4.5 text-accent-foreground" />
                       </div>
                       <div className="min-w-0 flex-1">

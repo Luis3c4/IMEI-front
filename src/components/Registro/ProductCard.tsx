@@ -17,7 +17,7 @@ const ProductCard = ({ name, isSelected, onClick }: ProductCardProps) => (
   >
     <span className="truncate">{name}</span>
     <ChevronRight
-      className={`ml-2 h-4 w-4 flex-shrink-0 transition-all duration-200 ${
+      className={`ml-2 h-4 w-4 shrink-0 transition-all duration-200 ${
         isSelected
           ? "rotate-90 text-primary"
           : "text-muted-foreground group-hover:translate-x-0.5 group-hover:text-foreground"
