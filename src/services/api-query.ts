@@ -1,8 +1,8 @@
 // Servicio con TanStack Query para llamadas a API
 
-import { useQuery, useMutation, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import { API_URL } from "../utils/constants";
-import type { Product } from "../types/productsType";
+import type { Product, CreateProductRequest, CreateProductResponse } from "../types/productsType";
 import type { Stats, LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types";
 import type { Product as HierarchicalProduct, ProductHierarchyResponse } from "../types/mockProductsType";
 import { supabase } from "../lib/supabase";
@@ -76,11 +76,33 @@ class ApiServiceClass {
       throw new Error(payload?.error || "Error al cargar productos");
     }
 
-    if (payload.data.length === 0) {
-      throw new Error("No se encontraron productos");
+    return payload.data as Product[];
+  }
+
+  async createProduct(payload: CreateProductRequest): Promise<CreateProductResponse> {
+    const response = await fetch(`${API_URL}/api/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let message = "Error al crear producto";
+      try {
+        const error = await response.json();
+        message = error?.detail || error?.error || message;
+      } catch {
+        // Ignorar parse error y mantener mensaje por defecto
+      }
+      throw new Error(message);
     }
 
-    return payload.data as Product[];
+    const responsePayload: CreateProductResponse = await response.json();
+    if (!responsePayload?.success) {
+      throw new Error(responsePayload?.error || "Error al crear producto");
+    }
+
+    return responsePayload;
   }
 
   async getInventory(category?: string): Promise<HierarchicalProduct[]> {
@@ -334,6 +356,27 @@ export function useBulkToggleSoldItems(
   return useMutation({
     mutationFn: (itemIds: number[]) => apiService.bulkToggleSoldItems(itemIds),
     ...options,
+  });
+}
+
+export function useCreateProduct(
+  options?: UseMutationOptions<CreateProductResponse, Error, CreateProductRequest>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...options,
+    mutationFn: (payload: CreateProductRequest) => apiService.createProduct(payload),
+    onSuccess: async (data, variables, onMutateResult, context) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.products }),
+        queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+      ]);
+
+      if (options?.onSuccess) {
+        await options.onSuccess(data, variables, onMutateResult, context);
+      }
+    },
   });
 }
 

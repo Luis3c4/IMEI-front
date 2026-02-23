@@ -1,7 +1,12 @@
-import { useState } from "react";
-import { appleProducts, type ProductCategory, type ProductVariant } from "@/examples/data";
+import { useMemo, useState } from "react";
 import ProductCard from "@/components/Registro/ProductCard";
-import ProductForm from "@/components/Registro/ProductForm";
+import ProductForm, {
+  NO_CAPACITY_LABEL,
+  NO_COLOR_LABEL,
+  type RegistroFormData,
+  type RegistroProductVariant,
+} from "@/components/Registro/ProductForm";
+import { useCreateProduct, useProducts } from "@/services/api-query";
 import { Package, Cpu, Smartphone, Tablet, Laptop, Monitor, HardDrive, Watch, Headphones, Speaker, Tv, MapPin, ChevronLeft } from "lucide-react";
 //import { toast } from "sonner";
 
@@ -18,14 +23,73 @@ const categoryIcons: Record<string, React.ElementType> = {
   AIRTAG: MapPin,
 };
 
-const Index = () => {
-  const [selectedCategory, setSelectedCategory] = useState<ProductCategory | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<ProductVariant | null>(null);
+interface RegistroCategory {
+  category: string;
+  products: RegistroProductVariant[];
+}
 
-  const handleRegister = (data: { product: string; color: string; capacity: string }) => {
-    // toast.success(`${data.product} — ${data.color}, ${data.capacity}`, {
-    //   description: "Producto registrado exitosamente",
-    // });
+const Index = () => {
+  const [selectedCategory, setSelectedCategory] = useState<RegistroCategory | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<RegistroProductVariant | null>(null);
+  const { data: apiProducts = [], isLoading, isError } = useProducts();
+  const createProduct = useCreateProduct();
+
+  const categories = useMemo<RegistroCategory[]>(() => {
+    if (!apiProducts.length) return [];
+
+    const grouped = new Map<string, RegistroProductVariant[]>();
+
+    apiProducts.forEach((product) => {
+      const category = (product.category || "OTROS").toUpperCase();
+      const colors = Array.from(
+        new Set(
+          product.product_variants
+            .map((variant) => variant.color)
+            .filter((color): color is string => Boolean(color))
+        )
+      );
+      const capacities = Array.from(
+        new Set(
+          product.product_variants
+            .map((variant) => variant.capacity)
+            .filter((capacity): capacity is string => Boolean(capacity))
+        )
+      );
+
+      const nextProduct: RegistroProductVariant = {
+        name: product.name,
+        colors: colors.length ? colors : [NO_COLOR_LABEL],
+        capacities: capacities.length ? capacities : [NO_CAPACITY_LABEL],
+      };
+
+      const categoryProducts = grouped.get(category) || [];
+      categoryProducts.push(nextProduct);
+      grouped.set(category, categoryProducts);
+    });
+
+    return Array.from(grouped.entries()).map(([category, products]) => ({
+      category,
+      products,
+    }));
+  }, [apiProducts]);
+
+  const handleRegister = async (data: RegistroFormData): Promise<boolean> => {
+    if (!selectedCategory) return false;
+
+    try {
+      await createProduct.mutateAsync({
+        category: selectedCategory.category,
+        product_name: data.product,
+        color: data.color,
+        capacity: data.capacity,
+        serial_number: data.serialNumber,
+        product_number: data.partNumber,
+      });
+
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const handleBack = () => {
@@ -33,7 +97,7 @@ const Index = () => {
     setSelectedProduct(null);
   };
 
-  const totalProducts = appleProducts.reduce((acc, cat) => acc + cat.products.length, 0);
+  const totalProducts = categories.reduce((acc, cat) => acc + cat.products.length, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,11 +133,21 @@ const Index = () => {
                 </h2>
                 <div className="h-px flex-1 bg-border/60" />
                 <span className="text-[0.625rem] font-medium text-muted-foreground">
-                  {appleProducts.length} categorías
+                  {categories.length} categorías
                 </span>
               </div>
+              {isLoading && (
+                <div className="rounded-xl border border-border/70 bg-card/50 px-4 py-3 text-xs text-muted-foreground">
+                  Cargando categorías...
+                </div>
+              )}
+              {isError && (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-xs text-destructive">
+                  No se pudieron cargar productos desde la API.
+                </div>
+              )}
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {appleProducts.map((cat) => {
+                {categories.map((cat) => {
                   const Icon = categoryIcons[cat.category] || Package;
                   return (
                     <button
@@ -138,7 +212,11 @@ const Index = () => {
         {/* Form Panel */}
         <aside className="lg:sticky lg:top-20 lg:self-start">
           {selectedProduct ? (
-            <ProductForm product={selectedProduct} onRegister={handleRegister} />
+            <ProductForm
+              product={selectedProduct}
+              onRegister={handleRegister}
+              isSubmitting={createProduct.isPending}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 bg-card/50 p-14 text-center">
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
