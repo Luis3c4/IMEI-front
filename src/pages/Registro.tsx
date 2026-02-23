@@ -7,20 +7,21 @@ import ProductForm, {
   type RegistroProductVariant,
 } from "@/components/Registro/ProductForm";
 import { useCreateProduct, useProducts } from "@/services/api-query";
-import { Package, Cpu, Smartphone, Tablet, Laptop, Monitor, HardDrive, Watch, Headphones, Speaker, Tv, MapPin, ChevronLeft } from "lucide-react";
+import { Package, Cpu, Smartphone, Tablet, Laptop, Monitor, Watch, Headphones, Speaker, Tv, MapPin, ChevronLeft, Keyboard, PencilLine} from "lucide-react";
 //import { toast } from "sonner";
 
 const categoryIcons: Record<string, React.ElementType> = {
   IPHONE: Smartphone,
   IPAD: Tablet,
   MACBOOK: Laptop,
-  IMAC: Monitor,
-  "MAC MINI & MAC STUDIO": HardDrive,
+  MAC: Monitor,
   "APPLE WATCH": Watch,
   AIRPODS: Headphones,
   HOMEPOD: Speaker,
   "APPLE TV": Tv,
   AIRTAG: MapPin,
+  KEYBOARD: Keyboard,
+  "APPLE PENCIL": PencilLine,
 };
 
 interface RegistroCategory {
