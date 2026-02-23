@@ -216,6 +216,7 @@ const Index = () => {
             <ProductForm
               product={selectedProduct}
               onRegister={handleRegister}
+              onSuccess={handleBack}
               isSubmitting={createProduct.isPending}
             />
           ) : (

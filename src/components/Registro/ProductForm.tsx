@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Check, Smartphone, Laptop, Watch, Headphones, Tv, MapPin, Speaker, Tablet, Info } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, Smartphone, Laptop, Watch, Headphones, Tv, MapPin, Speaker, Tablet, Info, Plus, X } from "lucide-react";
 
 export const NO_COLOR_LABEL = "SIN COLOR";
 export const NO_CAPACITY_LABEL = "SIN CAPACIDAD";
@@ -32,16 +32,52 @@ const getCategoryIcon = (name: string) => {
 interface ProductFormProps {
   product: RegistroProductVariant;
   onRegister: (data: RegistroFormData) => Promise<boolean>;
+  onSuccess?: () => void;
   isSubmitting?: boolean;
 }
 
-const ProductForm = ({ product, onRegister, isSubmitting = false }: ProductFormProps) => {
+const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: ProductFormProps) => {
   const [color, setColor] = useState("");
   const [capacity, setCapacity] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [partNumber, setPartNumber] = useState("");
   const [registered, setRegistered] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Extra variants added inline
+  const [extraColors, setExtraColors] = useState<string[]>([]);
+  const [addingColor, setAddingColor] = useState(false);
+  const [colorInput, setColorInput] = useState("");
+
+  const [extraCapacities, setExtraCapacities] = useState<string[]>([]);
+  const [addingCapacity, setAddingCapacity] = useState(false);
+  const [capacityInput, setCapacityInput] = useState("");
+
+  const colorInputRef = useRef<HTMLInputElement>(null);
+  const capacityInputRef = useRef<HTMLInputElement>(null);
+
+  const allColors = [...product.colors, ...extraColors];
+  const allCapacities = [...product.capacities, ...extraCapacities];
+
+  const confirmAddColor = () => {
+    const val = colorInput.trim().toUpperCase();
+    if (val && !allColors.includes(val)) {
+      setExtraColors((prev) => [...prev, val]);
+      setColor(val);
+    }
+    setColorInput("");
+    setAddingColor(false);
+  };
+
+  const confirmAddCapacity = () => {
+    const val = capacityInput.trim().toUpperCase();
+    if (val && !allCapacities.includes(val)) {
+      setExtraCapacities((prev) => [...prev, val]);
+      setCapacity(val);
+    }
+    setCapacityInput("");
+    setAddingCapacity(false);
+  };
 
   const Icon = getCategoryIcon(product.name);
 
@@ -84,6 +120,9 @@ const ProductForm = ({ product, onRegister, isSubmitting = false }: ProductFormP
       setCapacity("");
       setSerialNumber("");
       setPartNumber("");
+      setExtraColors([]);
+      setExtraCapacities([]);
+      onSuccess?.();
     }, 2000);
   };
 
@@ -110,17 +149,56 @@ const ProductForm = ({ product, onRegister, isSubmitting = false }: ProductFormP
           Color
         </label>
         <div className="flex flex-wrap gap-1.5">
-          {product.colors.map((c) => (
+          {allColors.map((c) => (
             <button
               key={c}
               onClick={() => setColor(c)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
-                color === c ? "chip-active" : "chip-idle"
+                selectedColor === c ? "chip-active" : "chip-idle"
               }`}
             >
               {c}
             </button>
           ))}
+
+          {/* Inline add color */}
+          {addingColor ? (
+            <div className="flex items-center gap-1">
+              <input
+                ref={colorInputRef}
+                autoFocus
+                type="text"
+                value={colorInput}
+                onChange={(e) => setColorInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmAddColor();
+                  if (e.key === "Escape") { setColorInput(""); setAddingColor(false); }
+                }}
+                placeholder="Nuevo color"
+                className="w-28 rounded-lg border border-border bg-muted/40 px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <button
+                onClick={confirmAddColor}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-accent-foreground hover:opacity-80 transition-opacity"
+              >
+                <Check className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => { setColorInput(""); setAddingColor(false); }}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-muted-foreground hover:opacity-80 transition-opacity"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setAddingColor(true); setTimeout(() => colorInputRef.current?.focus(), 0); }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+              title="Agregar color"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -130,17 +208,56 @@ const ProductForm = ({ product, onRegister, isSubmitting = false }: ProductFormP
           {capacityLabel}
         </label>
         <div className="flex flex-wrap gap-1.5">
-          {product.capacities.map((cap) => (
+          {allCapacities.map((cap) => (
             <button
               key={cap}
               onClick={() => setCapacity(cap)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
-                capacity === cap ? "chip-active" : "chip-idle"
+                selectedCapacity === cap ? "chip-active" : "chip-idle"
               }`}
             >
               {cap}
             </button>
           ))}
+
+          {/* Inline add capacity */}
+          {addingCapacity ? (
+            <div className="flex items-center gap-1">
+              <input
+                ref={capacityInputRef}
+                autoFocus
+                type="text"
+                value={capacityInput}
+                onChange={(e) => setCapacityInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmAddCapacity();
+                  if (e.key === "Escape") { setCapacityInput(""); setAddingCapacity(false); }
+                }}
+                placeholder="Nueva capacidad"
+                className="w-32 rounded-lg border border-border bg-muted/40 px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+              <button
+                onClick={confirmAddCapacity}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-accent-foreground hover:opacity-80 transition-opacity"
+              >
+                <Check className="h-3 w-3" />
+              </button>
+              <button
+                onClick={() => { setCapacityInput(""); setAddingCapacity(false); }}
+                className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-muted-foreground hover:opacity-80 transition-opacity"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setAddingCapacity(true); setTimeout(() => capacityInputRef.current?.focus(), 0); }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+              title="Agregar capacidad"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
