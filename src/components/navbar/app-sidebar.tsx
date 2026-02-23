@@ -67,8 +67,8 @@ const data = {
         },
         
         {
-          title: "Settings",
-          url: "#",
+          title: "Registro de Productos",
+          url: "/registro",
         },
       ],
     },
