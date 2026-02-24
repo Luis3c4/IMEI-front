@@ -3,13 +3,12 @@
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
 import { API_URL } from "../utils/constants";
 import type { Product, CreateProductRequest, CreateProductResponse } from "../types/productsType";
-import type { Stats, LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types";
+import type { LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types";
 import type { Product as HierarchicalProduct, ProductHierarchyResponse } from "../types/mockProductsType";
 import { supabase } from "../lib/supabase";
 
 // ============= Query Keys =============
 export const queryKeys = {
-  stats: ["stats"] as const,
   balance: ["balance"] as const,
   products: ["products"] as const,
   inventory: (category?: string) => ["inventory", category] as const,
@@ -43,12 +42,6 @@ class ApiServiceClass {
       throw new Error(error.error || "Error al consultar el dispositivo");
     }
 
-    return response.json();
-  }
-
-  async getStats(): Promise<Stats> {
-    const response = await fetch(`${API_URL}/api/sheets/stats`);
-    if (!response.ok) throw new Error("Error al cargar estadísticas");
     return response.json();
   }
 
@@ -224,17 +217,6 @@ class ApiServiceClass {
 const apiService = new ApiServiceClass();
 
 // ============= Hooks con TanStack Query =============
-
-/**
- * Hook para obtener estadísticas
- */
-export function useStats(options?: Omit<UseQueryOptions<Stats>, "queryKey" | "queryFn">) {
-  return useQuery({
-    queryKey: queryKeys.stats,
-    queryFn: () => apiService.getStats(),
-    ...options,
-  });
-}
 
 /**
  * Hook para obtener el balance

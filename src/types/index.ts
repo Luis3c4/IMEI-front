@@ -19,13 +19,6 @@ export interface DeviceInfo {
   iCloud_Lock: string;
 }
 
-export interface Stats {
-  total_consultas: number;
-  sheet_existe: boolean;
-  sheet_url: string;
-  ultima_consulta?: string;
-}
-
 export interface Service {
   service: string;
   name: string;
@@ -67,9 +60,6 @@ export interface DeviceApiResponse {
   balance?: number;
   price?: number;
   order_id?: string;
-  sheet_updated?: boolean;
-  total_registros?: number;
-  sheet_url?: string;
   // optional fields like error/message may appear in some responses
   error?: string;
   message?: string;

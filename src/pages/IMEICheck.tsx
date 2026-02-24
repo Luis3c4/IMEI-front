@@ -3,20 +3,17 @@ import {
   Search,
   Loader2,
   AlertCircle,
-  ExternalLink,
-  Sheet,
   DollarSign,
 } from "lucide-react";
 import { ScanBarcode } from "lucide-react";
 import Scanner from "../components/Scanner";
 import Toast from "../components/Toast";
 import InfoCard from "../components/InfoCard";
-import type { ToastState, Stats, Service } from "../types";
+import type { ToastState, Service } from "../types";
 import { TOAST_DURATION } from "../utils/constants";
 import {
   useBalance,
   useServices,
-  useStats as useStatsQuery,
 } from "../services/api-query";
 import { useIMEIChecker } from "../hooks/useIMEIChecker";
 
@@ -34,12 +31,6 @@ export default function IMEICheck() {
 
   // Datos de la API
   const {
-    data: statsData,
-    error: statsError,
-    refetch: refetchStats,
-  } = useStatsQuery({ retry: 1 });
-
-  const {
     data: balanceData,
     error: balanceError,
     refetch: refetchBalance,
@@ -53,17 +44,12 @@ export default function IMEICheck() {
     refetch: refetchServices,
   } = useServices({ retry: 1 });
 
-  const stats: Stats = statsData ?? {
-    total_consultas: 0,
-    sheet_existe: false,
-    sheet_url: "",
-  };
   const balance = balanceData ?? null;
   const services: Service[] = servicesResponse?.services ?? [];
   const loadingServices = servicesLoading || servicesFetching;
 
   const refreshData = () =>
-    Promise.all([refetchStats(), refetchBalance(), refetchServices()]);
+    Promise.all([refetchBalance(), refetchServices()]);
 
   // Hook personalizado para la lógica IMEI
   const {
@@ -89,10 +75,10 @@ export default function IMEICheck() {
   }, [scannerOpen]);
 
   useEffect(() => {
-    if (statsError || balanceError || servicesError) {
+    if (balanceError || servicesError) {
       showToast("Error al cargar datos", "error");
     }
-  }, [statsError, balanceError, servicesError]);
+  }, [balanceError, servicesError]);
 
   useEffect(() => {
     if (services.length > 0 && !services.some((svc) => svc.service === serviceId)) {
@@ -102,13 +88,6 @@ export default function IMEICheck() {
 
   const handleConsultar = async () => {
     await checkDevice(inputValue, partNumber);
-  };
-
-  const handleAbrirSheet = () => {
-    if (stats.sheet_url) {
-      window.open(stats.sheet_url, "_blank");
-      showToast("📊 Abriendo Google Sheet...", "success");
-    }
   };
 
   const handleNuevaConsulta = () => {
@@ -141,43 +120,6 @@ export default function IMEICheck() {
             </div>
           </div>
         )}
-
-        {/* Google Sheets Stats Bar */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6 border-l-4 border-green-500">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <Sheet className="text-green-600" size={40} />
-              <div>
-                <p className="text-sm text-gray-600 font-medium">
-                  Google Sheets - Actualización en tiempo real
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Total de registros:{" "}
-                  <span className="font-semibold text-green-600">
-                    {stats.total_consultas}
-                  </span>
-                  {stats.ultima_consulta &&
-                    ` • Última: ${new Date(
-                      stats.ultima_consulta
-                    ).toLocaleString("es-ES", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}`}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleAbrirSheet}
-              disabled={!stats.sheet_existe}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 text-sm"
-            >
-              <ExternalLink size={18} />
-              Abrir en Google Sheets
-            </button>
-          </div>
-        </div>
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -301,22 +243,6 @@ export default function IMEICheck() {
 
               {/* Info Cards */}
               <div className="mt-6 space-y-2">
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <div className="flex items-start gap-2">
-                    <Sheet
-                      className="text-green-600 shrink-0 mt-0.5"
-                      size={16}
-                    />
-                    <div>
-                      <p className="text-xs font-semibold text-green-900">
-                        Guardado automático en Google Sheets
-                      </p>
-                      <p className="text-xs text-green-700 mt-1">
-                        Historial completo con 21 campos de información
-                      </p>
-                    </div>
-                  </div>
-                </div>
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-xs text-blue-800">
                     💡 Powered by DHRU Fusion API - Datos en tiempo real
@@ -341,20 +267,6 @@ export default function IMEICheck() {
                   <p className="text-sm mt-2">
                     Ingresa un Serial Number o IMEI para comenzar
                   </p>
-                  {stats.total_consultas > 0 && (
-                    <div className="mt-6 text-center">
-                      <p className="text-sm text-green-600 font-medium mb-2">
-                        📊 Tienes {stats.total_consultas} consultas en Google
-                        Sheets
-                      </p>
-                      <button
-                        onClick={handleAbrirSheet}
-                        className="text-sm text-blue-600 hover:text-blue-700 underline"
-                      >
-                        Ver historial completo →
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -418,10 +330,6 @@ export default function IMEICheck() {
                           })}
                         </p>
                       </div>
-                      <div className="bg-white bg-opacity-20 px-4 py-2 rounded-lg text-center shrink-0">
-                        <Sheet className="mx-auto mb-1" size={24} />
-                        <p className="text-xs text-green-100">Guardado</p>
-                      </div>
                     </div>
                   </div>
 
@@ -481,13 +389,6 @@ export default function IMEICheck() {
 
                   {/* Botones de Acción */}
                   <div className="pt-4 border-t flex flex-col sm:flex-row gap-3">
-                    <button
-                      onClick={handleAbrirSheet}
-                      className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Sheet size={20} />
-                      Ver en Google Sheets
-                    </button>
                     <button
                       onClick={handleNuevaConsulta}
                       className="px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
