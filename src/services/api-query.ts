@@ -5,8 +5,8 @@ import { API_URL } from "../utils/constants";
 import type { Product, CreateProductRequest, CreateProductResponse } from "../types/productsType";
 import type { LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types";
 import type { Product as HierarchicalProduct, ProductHierarchyResponse } from "../types/mockProductsType";
+import type { CustomerListResponse } from "../types/clientesType";
 import { supabase } from "../lib/supabase";
-
 // ============= Query Keys =============
 export const queryKeys = {
   balance: ["balance"] as const,
@@ -15,6 +15,7 @@ export const queryKeys = {
   services: ["services"] as const,
   lastOrder: ["lastOrder"] as const,
   dni: (dniNumber: string) => ["dni", dniNumber] as const,
+  customers: (search?: string) => ["customers", search] as const,
 };
 
 // ============= Funciones de Fetch =============
@@ -198,6 +199,24 @@ class ApiServiceClass {
     return response.json();
   }
 
+  async getCustomers(search?: string): Promise<CustomerListResponse> {
+    const url = new URL(`${API_URL}/api/customers/`);
+    if (search?.trim()) url.searchParams.set("search", search.trim());
+
+    const response = await fetch(url.toString());
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error?.detail || error?.error || "Error al cargar clientes");
+    }
+
+    const payload: CustomerListResponse = await response.json();
+    if (!payload?.success) {
+      throw new Error(payload?.error || "Error al cargar clientes");
+    }
+    return payload;
+  }
+
   async bulkToggleSoldItems(itemIds: number[]): Promise<void> {
     const response = await fetch(`${API_URL}/api/products/items/bulk-toggle-sold`, {
       method: "POST",
@@ -272,6 +291,20 @@ export function useLastOrder(options?: Omit<UseQueryOptions<LastOrderInfo | null
   return useQuery({
     queryKey: queryKeys.lastOrder,
     queryFn: () => apiService.getLastOrder(),
+    ...options,
+  });
+}
+
+/**
+ * Hook para obtener la lista de clientes
+ */
+export function useCustomers(
+  search?: string,
+  options?: Omit<UseQueryOptions<CustomerListResponse>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.customers(search),
+    queryFn: () => apiService.getCustomers(search),
     ...options,
   });
 }

@@ -7,7 +7,6 @@ import {
   Bot,
   Command,
   Frame,
-  GalleryVerticalEnd,
   Map,
   PieChart,
   Settings2,
@@ -18,6 +17,7 @@ import { NavMain } from "@/components/navbar/nav-main"
 import { NavProjects } from "@/components/navbar/nav-projects"
 import { NavUser } from "@/components/navbar/nav-user"
 import { TeamSwitcher } from "@/components/navbar/team-switcher"
+import { useAuth } from "@/hooks/useAuth"
 import {
   Sidebar,
   SidebarContent,
@@ -26,17 +26,16 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
+const FalcontecLogo = ({ className }: { className?: string }) => (
+  <img src="/ico.ico" alt="Falcontec" className={className} />
+)
+
 // This is sample data.
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   teams: [
     {
-      name: "Acme Inc",
-      logo: GalleryVerticalEnd,
+      name: "Falcontec",
+      logo: FalcontecLogo,
       plan: "Enterprise",
     },
     {
@@ -82,8 +81,8 @@ const data = {
           url: "/inventario",
         },
         {
-          title: "Explorer",
-          url: "#",
+          title: "Clientes",
+          url: "/clientes",
         },
         {
           title: "Quantum",
@@ -158,6 +157,14 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user } = useAuth()
+
+  const navUser = {
+    name: user?.name || user?.email || 'Usuario',
+    email: user?.email || '',
+    avatar: '',
+  }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -168,7 +175,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={navUser} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
