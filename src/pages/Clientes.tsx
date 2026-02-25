@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Users, Search, Plus, UserCircle, Phone, CreditCard, Calendar } from "lucide-react";
+import { useState, useDeferredValue } from "react";
+import { Users, Search, UserCircle, Phone, CreditCard, Calendar, Loader2, AlertCircle } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -8,32 +8,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCustomers } from "@/services/api-query";
 
 interface Client {
-  idx: number;
   id: number;
-  name: string;
-  dni: string;
-  phone: string;
-  created_at: string;
-  first_name: string;
-  first_last_name: string;
-  second_last_name: string;
+  name?: string;
+  dni?: string;
+  phone?: string;
+  created_at?: string;
+  first_name?: string;
+  first_last_name?: string;
+  second_last_name?: string;
 }
-
-const sampleClients: Client[] = [
-  {
-    idx: 14,
-    id: 21,
-    name: "Adrianzen Miranda Jeraldine Margot",
-    dni: "71592968",
-    phone: "917 676 669",
-    created_at: "2026-02-06 22:08:40.872257+00",
-    first_name: "Jeraldine Margot",
-    first_last_name: "Adrianzen",
-    second_last_name: "Miranda",
-  },
-];
 
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -42,13 +28,18 @@ const formatDate = (dateStr: string) => {
 
 const Clients = () => {
   const [search, setSearch] = useState("");
-  const [clients] = useState<Client[]>(sampleClients);
+  const deferredSearch = useDeferredValue(search);
+
+  const { data, isLoading, isError, error } = useCustomers(deferredSearch || undefined);
+
+  const clients: Client[] = data?.data ?? [];
+  const total = data?.total ?? 0;
 
   const filtered = clients.filter(
     (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.dni.includes(search) ||
-      c.phone.includes(search)
+      (c.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.dni ?? "").includes(search) ||
+      (c.phone ?? "").includes(search)
   );
 
   return (
@@ -70,7 +61,7 @@ const Clients = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-                {clients.length} registrados
+                {isLoading ? "Cargando..." : `${total} registrados`}
               </span>
             </div>
           </div>
@@ -92,15 +83,22 @@ const Clients = () => {
                 className="w-full rounded-lg border border-border bg-muted/40 py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
-            <button className="inline-flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-foreground/90">
-              <Plus className="h-4 w-4" />
-              Nuevo cliente
-            </button>
           </div>
 
           {/* Table */}
           <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-            <Table>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground text-sm">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Cargando clientes...
+              </div>
+            ) : isError ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-2 text-destructive text-sm">
+                <AlertCircle className="h-6 w-6" />
+                <p>{error instanceof Error ? error.message : "Error al cargar clientes"}</p>
+              </div>
+            ) : (
+              <Table>
               <TableHeader>
                 <TableRow className="border-border/60 hover:bg-transparent">
                   <TableHead className="px-5 py-3.5 text-[0.6875rem] font-bold uppercase tracking-widest text-muted-foreground">
@@ -169,7 +167,7 @@ const Clients = () => {
                       <TableCell className="px-5 py-3.5">
                         <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          {formatDate(client.created_at)}
+                          {formatDate(client.created_at ?? "")}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -177,6 +175,7 @@ const Clients = () => {
                 )}
               </TableBody>
             </Table>
+            )}
           </div>
         </div>
       </main>
