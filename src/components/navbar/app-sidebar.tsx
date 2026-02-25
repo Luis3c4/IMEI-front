@@ -81,8 +81,8 @@ const data = {
           url: "/inventario",
         },
         {
-          title: "Explorer",
-          url: "#",
+          title: "Clientes",
+          url: "/clientes",
         },
         {
           title: "Quantum",

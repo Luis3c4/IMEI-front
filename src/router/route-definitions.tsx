@@ -8,6 +8,7 @@ import Factura from '@/pages/Factura'
 import Inventario from '@/pages/Inventario'
 import Registro from '@/pages/Registro'
 import { ProtectedLayout } from '@/components/ProtectedLayout'
+import Clientes from '@/pages/Clientes'
 
 // Ruta layout protegida con shell (sidebar) compartida
 export const protectedLayoutRoute = createRoute({
@@ -46,6 +47,12 @@ export const registroRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: 'registro',
   component: Registro,
+})
+
+export const clientesRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: 'clientes',
+  component: Clientes,
 })
 
 // Ruta protegida: home (fallback)
