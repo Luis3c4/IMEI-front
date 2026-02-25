@@ -7,7 +7,6 @@ import {
   Bot,
   Command,
   Frame,
-  GalleryVerticalEnd,
   Map,
   PieChart,
   Settings2,
@@ -27,12 +26,16 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
+const FalcontecLogo = ({ className }: { className?: string }) => (
+  <img src="/ico.ico" alt="Falcontec" className={className} />
+)
+
 // This is sample data.
 const data = {
   teams: [
     {
-      name: "Acme Inc",
-      logo: GalleryVerticalEnd,
+      name: "Falcontec",
+      logo: FalcontecLogo,
       plan: "Enterprise",
     },
     {
