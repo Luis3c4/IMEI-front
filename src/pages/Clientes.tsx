@@ -1,5 +1,5 @@
 import { useState, useDeferredValue } from "react";
-import { Users, Search, UserCircle, Phone, CreditCard, Calendar, Loader2, AlertCircle } from "lucide-react";
+import { Users, Search, UserCircle, Phone, CreditCard, Calendar, Loader2, AlertCircle, Package } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -19,6 +19,7 @@ interface Client {
   first_name?: string;
   first_last_name?: string;
   second_last_name?: string;
+  products?: string[];
 }
 
 const formatDate = (dateStr: string) => {
@@ -116,12 +117,15 @@ const Clients = () => {
                   <TableHead className="px-5 py-3.5 text-[0.6875rem] font-bold uppercase tracking-widest text-muted-foreground">
                     Registro
                   </TableHead>
+                  <TableHead className="px-5 py-3.5 text-[0.6875rem] font-bold uppercase tracking-widest text-muted-foreground">
+                    Productos
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow className="hover:bg-transparent border-0">
-                    <TableCell colSpan={5} className="px-5 py-14 text-center">
+                    <TableCell colSpan={6} className="px-5 py-14 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <UserCircle className="h-8 w-8 text-muted-foreground/40" />
                         <p className="text-sm text-muted-foreground">No se encontraron clientes</p>
@@ -169,6 +173,23 @@ const Clients = () => {
                           <Calendar className="h-3 w-3" />
                           {formatDate(client.created_at ?? "")}
                         </div>
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5 max-w-55">
+                        {client.products && client.products.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {client.products.map((p) => (
+                              <span
+                                key={p}
+                                className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[0.6875rem] font-medium text-primary"
+                              >
+                                <Package className="h-2.5 w-2.5" />
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/50">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
