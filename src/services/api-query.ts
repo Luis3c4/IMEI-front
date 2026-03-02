@@ -15,7 +15,7 @@ export const queryKeys = {
   services: ["services"] as const,
   lastOrder: ["lastOrder"] as const,
   dni: (dniNumber: string) => ["dni", dniNumber] as const,
-  customers: (search?: string) => ["customers", search] as const,
+  customers: (search?: string, page?: number, pageSize?: number) => ["customers", search, page, pageSize] as const,
 };
 
 // ============= Funciones de Fetch =============
@@ -199,9 +199,11 @@ class ApiServiceClass {
     return response.json();
   }
 
-  async getCustomers(search?: string): Promise<CustomerListResponse> {
+  async getCustomers(search?: string, page = 1, pageSize = 20): Promise<CustomerListResponse> {
     const url = new URL(`${API_URL}/api/customers/`);
     if (search?.trim()) url.searchParams.set("search", search.trim());
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("page_size", String(pageSize));
 
     const response = await fetch(url.toString());
 
@@ -300,11 +302,13 @@ export function useLastOrder(options?: Omit<UseQueryOptions<LastOrderInfo | null
  */
 export function useCustomers(
   search?: string,
+  page = 1,
+  pageSize = 20,
   options?: Omit<UseQueryOptions<CustomerListResponse>, "queryKey" | "queryFn">
 ) {
   return useQuery({
-    queryKey: queryKeys.customers(search),
-    queryFn: () => apiService.getCustomers(search),
+    queryKey: queryKeys.customers(search, page, pageSize),
+    queryFn: () => apiService.getCustomers(search, page, pageSize),
     ...options,
   });
 }
