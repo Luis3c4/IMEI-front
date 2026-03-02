@@ -1,5 +1,5 @@
 import { useState, useDeferredValue } from "react";
-import { Users, Search, UserCircle, Phone, CreditCard, Calendar, Loader2, AlertCircle, Package } from "lucide-react";
+import { Users, Search, UserCircle, Phone, CreditCard, Calendar, Loader2, AlertCircle, Package, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -10,38 +10,29 @@ import {
 } from "@/components/ui/table";
 import { useCustomers } from "@/services/api-query";
 
-interface Client {
-  id: number;
-  name?: string;
-  dni?: string;
-  phone?: string;
-  created_at?: string;
-  first_name?: string;
-  first_last_name?: string;
-  second_last_name?: string;
-  products?: string[];
-}
-
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
   return d.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
 };
 
+const PAGE_SIZE = 20;
+
 const Clients = () => {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
 
-  const { data, isLoading, isError, error } = useCustomers(deferredSearch || undefined);
+  // Reset to page 1 when search changes
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
-  const clients: Client[] = data?.data ?? [];
+  const { data, isLoading, isError, error } = useCustomers(deferredSearch || undefined, page, PAGE_SIZE);
+
+  const clients = data?.data ?? [];
   const total = data?.total ?? 0;
-
-  const filtered = clients.filter(
-    (c) =>
-      (c.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (c.dni ?? "").includes(search) ||
-      (c.phone ?? "").includes(search)
-  );
+  const totalPages = data?.total_pages ?? 1;
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
@@ -79,7 +70,7 @@ const Clients = () => {
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Buscar por nombre, DNI o teléfono..."
                 className="w-full rounded-lg border border-border bg-muted/40 py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
@@ -123,7 +114,7 @@ const Clients = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {clients.length === 0 ? (
                   <TableRow className="hover:bg-transparent border-0">
                     <TableCell colSpan={6} className="px-5 py-14 text-center">
                       <div className="flex flex-col items-center gap-2">
@@ -133,13 +124,13 @@ const Clients = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((client, i) => (
+                  clients.map((client, i) => (
                     <TableRow
                       key={client.id}
                       className="border-border/40 hover:bg-accent/30 transition-colors"
                     >
                       <TableCell className="px-5 py-3.5 text-xs text-muted-foreground font-medium">
-                        {i + 1}
+                        {(page - 1) * PAGE_SIZE + i + 1}
                       </TableCell>
                       <TableCell className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
@@ -198,6 +189,60 @@ const Clients = () => {
             </Table>
             )}
           </div>
+
+          {/* Pagination */}
+          {!isLoading && !isError && totalPages > 1 && (
+            <div className="flex items-center justify-between px-1">
+              <p className="text-xs text-muted-foreground">
+                Página <span className="font-medium text-foreground">{page}</span> de{" "}
+                <span className="font-medium text-foreground">{totalPages}</span>
+                {" "}·{" "}
+                <span className="font-medium text-foreground">{total}</span> clientes
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, idx) =>
+                    p === "..." ? (
+                      <span key={`ellipsis-${idx}`} className="px-1 text-xs text-muted-foreground">
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p as number)}
+                        className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border text-xs font-medium transition-colors ${
+                          page === p
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
