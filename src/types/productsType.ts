@@ -19,6 +19,7 @@ export interface    ProductVariant {
     color:          string | null;
     price:          number;
     capacity:       string | null;
+    chip?:          string | null;
     product_number?: string;
     product_numbers?: string[];
     product_items:  ProductItem[];
@@ -39,6 +40,7 @@ export interface CreateProductRequest {
     product_name: string;
     color: string | null;
     capacity: string | null;
+    chip?: string | null;
     serial_number: string;
     product_number: string;
 }
