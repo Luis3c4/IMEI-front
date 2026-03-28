@@ -7,10 +7,6 @@ export const NO_CAPACITY_LABEL = "SIN CAPACIDAD";
 const MAC_CHIP_OPTIONS = [
   "10C CPU / 8C GPU",
   "10C CPU / 10C GPU",
-  "12C CPU / 16C GPU",
-  "12C CPU / 19C GPU",
-  "14C CPU / 30C GPU",
-  "16C CPU / 40C GPU",
 ];
 
 export interface RegistroProductVariant {
