@@ -26,9 +26,9 @@ const ProductRow = ({ product }: ProductRowProps) => {
           </div>
         </TableCell>
         <TableCell>{product.totalQuantity}</TableCell>
-        <TableCell>
+        <TableCell className="w-fit whitespace-nowrap">
           {product.capacities.length > 0 
-            ? product.capacities.filter(c => c !== null).join("/") || "—"
+            ? product.capacities.filter(c => c !== null).join(" ") || "—"
             : "—"
           }
         </TableCell>
