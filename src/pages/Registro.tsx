@@ -56,6 +56,18 @@ const Index = () => {
             .filter((capacity): capacity is string => Boolean(capacity))
         )
       );
+      const chipsByCapacity: Record<string, string[]> = {};
+      product.product_variants.forEach((variant) => {
+        if (variant.capacity && variant.chip) {
+          if (!chipsByCapacity[variant.capacity]) {
+            chipsByCapacity[variant.capacity] = [];
+          }
+          if (!chipsByCapacity[variant.capacity].includes(variant.chip)) {
+            chipsByCapacity[variant.capacity].push(variant.chip);
+          }
+        }
+      });
+
       const chips = Array.from(
         new Set(
           product.product_variants
@@ -69,6 +81,7 @@ const Index = () => {
         colors: colors.length ? colors : [NO_COLOR_LABEL],
         capacities: capacities.length ? capacities : [NO_CAPACITY_LABEL],
         chips,
+        chipsByCapacity,
       };
 
       const categoryProducts = grouped.get(category) || [];

@@ -51,7 +51,7 @@ const data = {
   ],
   navMain: [
     {
-      title: "Playground",
+      title: "Principal",
       url: "#",
       icon: SquareTerminal,
       isActive: true,
@@ -66,13 +66,13 @@ const data = {
         },
         
         {
-          title: "Registro de Productos",
+          title: "Añadir Productos",
           url: "/registro",
         },
       ],
     },
     {
-      title: "Models",
+      title: "Registrados",
       url: "#",
       icon: Bot,
       items: [

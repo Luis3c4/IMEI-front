@@ -7,6 +7,11 @@ import type { LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types
 import type { Product as HierarchicalProduct, ProductHierarchyResponse } from "../types/mockProductsType";
 import type { CustomerListResponse } from "../types/clientesType";
 import { supabase } from "../lib/supabase";
+
+export interface MacbookVariants {
+  capacities: string[];
+  chips_by_capacity: Record<string, string[]>;
+}
 // ============= Query Keys =============
 export const queryKeys = {
   balance: ["balance"] as const,
@@ -16,6 +21,7 @@ export const queryKeys = {
   lastOrder: ["lastOrder"] as const,
   dni: (dniNumber: string) => ["dni", dniNumber] as const,
   customers: (search?: string, page?: number, pageSize?: number) => ["customers", search, page, pageSize] as const,
+  macbookVariants: (model: string) => ["macbookVariants", model] as const,
 };
 
 // ============= Funciones de Fetch =============
@@ -55,6 +61,17 @@ class ApiServiceClass {
     } catch {
       return null;
     }
+  }
+
+  async getMacbookVariants(model: string): Promise<MacbookVariants> {
+    const params = new URLSearchParams({ model });
+    const response = await fetch(`${API_URL}/api/products/macbook-variants?${params}`);
+
+    if (!response.ok) {
+      throw new Error("Error al obtener variantes MacBook");
+    }
+
+    return response.json();
   }
 
   async getProducts(): Promise<Product[]> {
@@ -246,6 +263,22 @@ export function useBalance(options?: Omit<UseQueryOptions<number | null>, "query
   return useQuery({
     queryKey: queryKeys.balance,
     queryFn: () => apiService.getBalance(),
+    ...options,
+  });
+}
+
+/**
+ * Hook para obtener las variantes v\u00e1lidas (capacidades + chips) de un modelo MacBook
+ * desde la tabla de precios del backend.
+ */
+export function useMacbookVariants(
+  model: string,
+  options?: Omit<UseQueryOptions<MacbookVariants>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.macbookVariants(model),
+    queryFn: () => apiService.getMacbookVariants(model),
+    staleTime: 1000 * 60 * 60, // 1 hora — los modelos no cambian frecuentemente
     ...options,
   });
 }

@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Smartphone, Laptop, Watch, Headphones, Tv, MapPin, Speaker, Tablet, Info, Plus, X } from "lucide-react";
+import { useMacbookVariants } from "@/services/api-query";
 
 export const NO_COLOR_LABEL = "SIN COLOR";
 export const NO_CAPACITY_LABEL = "SIN CAPACIDAD";
@@ -14,6 +15,7 @@ export interface RegistroProductVariant {
   colors: string[];
   capacities: string[];
   chips: string[];
+  chipsByCapacity: Record<string, string[]>;
 }
 
 export interface RegistroFormData {
@@ -72,10 +74,43 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
   // Whether this product requires a chip selection
   const isMac = product.name.toUpperCase().includes("MAC");
 
-  const baseChips = product.chips.length > 0 ? product.chips : MAC_CHIP_OPTIONS;
+  // Fetch authoritative capacities + chips from the backend pricing config
+  const { data: macbookVariants } = useMacbookVariants(product.name, { enabled: isMac });
+
   const allColors = [...product.colors, ...extraColors];
-  const allCapacities = [...product.capacities, ...extraCapacities];
-  const allChips = [...baseChips, ...extraChips];
+
+  // For Mac: merge backend capacities (canonical) with any DB-derived extras
+  const allCapacities = isMac && macbookVariants?.capacities.length
+    ? Array.from(new Set([...macbookVariants.capacities, ...product.capacities, ...extraCapacities]))
+    : [...product.capacities, ...extraCapacities];
+
+  // Derive selectedCapacity early — needed to compute availableChips before the confirm functions
+  const fallbackCapacity = product.capacities.length === 1 ? product.capacities[0] : "";
+  const selectedCapacity = capacity || fallbackCapacity;
+
+  // For Mac products: show only the chips valid for the selected RAM/storage combination.
+  // Primary source: backend pricing config. Supplement with DB-derived chips + user extras.
+  // Falls back to MAC_CHIP_OPTIONS when the backend has no mapping (e.g. brand-new model).
+  const availableChips = (() => {
+    if (!isMac || !selectedCapacity || selectedCapacity === NO_CAPACITY_LABEL) return [];
+
+    const backendChips = macbookVariants?.chips_by_capacity[selectedCapacity] ?? [];
+    const dbChips = product.chipsByCapacity?.[selectedCapacity] ?? [];
+    const merged = Array.from(new Set([...backendChips, ...dbChips, ...extraChips]));
+
+    if (merged.length > 0) return merged;
+
+    // Fallback: model not yet in pricing config
+    return Array.from(new Set([...MAC_CHIP_OPTIONS, ...extraChips]));
+  })();
+
+  // Auto-reset chip when capacity changes and the previously selected chip is no longer valid
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (chip && availableChips.length > 0 && !availableChips.includes(chip)) {
+      setChip("");
+    }
+  }, [selectedCapacity]);
 
   const confirmAddColor = () => {
     const val = colorInput.trim().toUpperCase();
@@ -99,7 +134,7 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
 
   const confirmAddChip = () => {
     const val = chipInput.trim().toUpperCase();
-    if (val && !allChips.includes(val)) {
+    if (val && !availableChips.includes(val)) {
       setExtraChips((prev) => [...prev, val]);
       setChip(val);
     }
@@ -116,10 +151,8 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
     : "Capacidad";
 
   const fallbackColor = product.colors.length === 1 ? product.colors[0] : "";
-  const fallbackCapacity = product.capacities.length === 1 ? product.capacities[0] : "";
-  const fallbackChip = allChips.length === 1 ? allChips[0] : "";
+  const fallbackChip = availableChips.length === 1 ? availableChips[0] : "";
   const selectedColor = color || fallbackColor;
-  const selectedCapacity = capacity || fallbackCapacity;
   const selectedChip = chip || fallbackChip;
 
   const normalizedColor = selectedColor === NO_COLOR_LABEL ? null : selectedColor || null;
@@ -303,14 +336,20 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
         </div>
       </div>
 
-      {/* Chip — solo para Mac/MacBook */}
-      {isMac && (
+      {/* Chip — solo para Mac/MacBook: oculto hasta elegir capacidad */}
+      {isMac && !selectedCapacity && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          <span>Selecciona una capacidad para ver las opciones de CPU / GPU</span>
+        </div>
+      )}
+      {isMac && selectedCapacity && (
         <div className="space-y-2.5">
           <label className="text-[0.6875rem] font-bold uppercase tracking-widest text-category-label">
             CPU / GPU
           </label>
           <div className="flex flex-wrap gap-1.5">
-            {allChips.map((c) => (
+            {availableChips.map((c) => (
               <button
                 key={c}
                 onClick={() => setChip(c)}
