@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCustomers } from "@/services/api-query";
+import { useAuth } from "@/hooks/useAuth";
 
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -21,6 +22,7 @@ const Clients = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
+  const { user } = useAuth();
 
   // Reset to page 1 when search changes
   const handleSearch = (value: string) => {
@@ -28,7 +30,7 @@ const Clients = () => {
     setPage(1);
   };
 
-  const { data, isLoading, isError, error } = useCustomers(deferredSearch || undefined, page, PAGE_SIZE);
+  const { data, isLoading, isError, error } = useCustomers(user?.id, deferredSearch || undefined, page, PAGE_SIZE);
 
   const clients = data?.data ?? [];
   const total = data?.total ?? 0;

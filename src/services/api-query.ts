@@ -20,7 +20,7 @@ export const queryKeys = {
   services: ["services"] as const,
   lastOrder: ["lastOrder"] as const,
   dni: (dniNumber: string) => ["dni", dniNumber] as const,
-  customers: (search?: string, page?: number, pageSize?: number) => ["customers", search, page, pageSize] as const,
+  customers: (userId?: string, search?: string, page?: number, pageSize?: number) => ["customers", userId, search, page, pageSize] as const,
   macbookVariants: (model: string) => ["macbookVariants", model] as const,
 };
 
@@ -217,12 +217,22 @@ class ApiServiceClass {
   }
 
   async getCustomers(search?: string, page = 1, pageSize = 20): Promise<CustomerListResponse> {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new Error("No hay sesión activa. Por favor, inicia sesión.");
+    }
+
     const url = new URL(`${API_URL}/api/customers/`);
     if (search?.trim()) url.searchParams.set("search", search.trim());
     url.searchParams.set("page", String(page));
     url.searchParams.set("page_size", String(pageSize));
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
@@ -334,14 +344,16 @@ export function useLastOrder(options?: Omit<UseQueryOptions<LastOrderInfo | null
  * Hook para obtener la lista de clientes
  */
 export function useCustomers(
+  userId?: string,
   search?: string,
   page = 1,
   pageSize = 20,
   options?: Omit<UseQueryOptions<CustomerListResponse>, "queryKey" | "queryFn">
 ) {
   return useQuery({
-    queryKey: queryKeys.customers(search, page, pageSize),
+    queryKey: queryKeys.customers(userId, search, page, pageSize),
     queryFn: () => apiService.getCustomers(search, page, pageSize),
+    enabled: !!userId,
     ...options,
   });
 }
