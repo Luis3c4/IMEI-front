@@ -348,12 +348,13 @@ export function useCustomers(
   search?: string,
   page = 1,
   pageSize = 20,
+  isAuthenticated = false,
   options?: Omit<UseQueryOptions<CustomerListResponse>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: queryKeys.customers(userId, search, page, pageSize),
     queryFn: () => apiService.getCustomers(search, page, pageSize),
-    enabled: !!userId,
+    enabled: isAuthenticated,
     ...options,
   });
 }

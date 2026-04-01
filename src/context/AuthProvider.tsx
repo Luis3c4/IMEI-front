@@ -15,7 +15,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userData: User = {
             id: session.user.id,
             email: session.user.email || '',
-            name: session.user.user_metadata?.name || session.user.email || ''
+            name: session.user.user_metadata?.name || session.user.email || '',
+            role: (session.user.app_metadata?.role === 'admin' ? 'admin' : 'user'),
           }
           setUser(userData)
         }
@@ -35,7 +36,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userData: User = {
             id: session.user.id,
             email: session.user.email || '',
-            name: session.user.user_metadata?.name || session.user.email || ''
+            name: session.user.user_metadata?.name || session.user.email || '',
+            role: (session.user.app_metadata?.role === 'admin' ? 'admin' : 'user'),
           }
           setUser(userData)
         } else {
@@ -63,7 +65,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userData: User = {
           id: data.user.id,
           email: data.user.email || '',
-          name: data.user.user_metadata?.name || data.user.email || ''
+          name: data.user.user_metadata?.name || data.user.email || '',
+          role: (data.user.app_metadata?.role === 'admin' ? 'admin' : 'user'),
         }
         setUser(userData)
       }
@@ -118,6 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         isLoading,
         isAuthenticated: !!user,
+        isAdmin: user?.role === 'admin',
         login,
         logout,
         signup,

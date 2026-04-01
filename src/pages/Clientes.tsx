@@ -22,7 +22,7 @@ const Clients = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
-  const { user } = useAuth();
+  const { user, isAdmin, isAuthenticated } = useAuth();
 
   // Reset to page 1 when search changes
   const handleSearch = (value: string) => {
@@ -30,7 +30,9 @@ const Clients = () => {
     setPage(1);
   };
 
-  const { data, isLoading, isError, error } = useCustomers(user?.id, deferredSearch || undefined, page, PAGE_SIZE);
+  // Admin ve todos los clientes; user solo los suyos
+  const filterUserId = isAdmin ? undefined : user?.id;
+  const { data, isLoading, isError, error } = useCustomers(filterUserId, deferredSearch || undefined, page, PAGE_SIZE, isAuthenticated);
 
   const clients = data?.data ?? [];
   const total = data?.total ?? 0;
