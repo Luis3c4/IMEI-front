@@ -1,19 +1,28 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Smartphone, Laptop, Watch, Headphones, Tv, MapPin, Speaker, Tablet, Info, Plus, X } from "lucide-react";
+import { useMacbookVariants } from "@/services/api-query";
 
 export const NO_COLOR_LABEL = "SIN COLOR";
 export const NO_CAPACITY_LABEL = "SIN CAPACIDAD";
+
+const MAC_CHIP_OPTIONS = [
+  "10C CPU / 8C GPU",
+  "10C CPU / 10C GPU",
+];
 
 export interface RegistroProductVariant {
   name: string;
   colors: string[];
   capacities: string[];
+  chips: string[];
+  chipsByCapacity: Record<string, string[]>;
 }
 
 export interface RegistroFormData {
   product: string;
   color: string | null;
   capacity: string | null;
+  chip: string | null;
   serialNumber: string;
   partNumber: string;
 }
@@ -39,6 +48,7 @@ interface ProductFormProps {
 const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: ProductFormProps) => {
   const [color, setColor] = useState("");
   const [capacity, setCapacity] = useState("");
+  const [chip, setChip] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [partNumber, setPartNumber] = useState("");
   const [registered, setRegistered] = useState(false);
@@ -53,11 +63,54 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
   const [addingCapacity, setAddingCapacity] = useState(false);
   const [capacityInput, setCapacityInput] = useState("");
 
+  const [extraChips, setExtraChips] = useState<string[]>([]);
+  const [addingChip, setAddingChip] = useState(false);
+  const [chipInput, setChipInput] = useState("");
+
   const colorInputRef = useRef<HTMLInputElement>(null);
   const capacityInputRef = useRef<HTMLInputElement>(null);
+  const chipInputRef = useRef<HTMLInputElement>(null);
+
+  // Whether this product requires a chip selection
+  const isMac = product.name.toUpperCase().includes("MAC");
+
+  // Fetch authoritative capacities + chips from the backend pricing config
+  const { data: macbookVariants } = useMacbookVariants(product.name, { enabled: isMac });
 
   const allColors = [...product.colors, ...extraColors];
-  const allCapacities = [...product.capacities, ...extraCapacities];
+
+  // For Mac: merge backend capacities (canonical) with any DB-derived extras
+  const allCapacities = isMac && macbookVariants?.capacities.length
+    ? Array.from(new Set([...macbookVariants.capacities, ...product.capacities, ...extraCapacities]))
+    : [...product.capacities, ...extraCapacities];
+
+  // Derive selectedCapacity early — needed to compute availableChips before the confirm functions
+  const fallbackCapacity = product.capacities.length === 1 ? product.capacities[0] : "";
+  const selectedCapacity = capacity || fallbackCapacity;
+
+  // For Mac products: show only the chips valid for the selected RAM/storage combination.
+  // Primary source: backend pricing config. Supplement with DB-derived chips + user extras.
+  // Falls back to MAC_CHIP_OPTIONS when the backend has no mapping (e.g. brand-new model).
+  const availableChips = (() => {
+    if (!isMac || !selectedCapacity || selectedCapacity === NO_CAPACITY_LABEL) return [];
+
+    const backendChips = macbookVariants?.chips_by_capacity[selectedCapacity] ?? [];
+    const dbChips = product.chipsByCapacity?.[selectedCapacity] ?? [];
+    const merged = Array.from(new Set([...backendChips, ...dbChips, ...extraChips]));
+
+    if (merged.length > 0) return merged;
+
+    // Fallback: model not yet in pricing config
+    return Array.from(new Set([...MAC_CHIP_OPTIONS, ...extraChips]));
+  })();
+
+  // Auto-reset chip when capacity changes and the previously selected chip is no longer valid
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (chip && availableChips.length > 0 && !availableChips.includes(chip)) {
+      setChip("");
+    }
+  }, [selectedCapacity]);
 
   const confirmAddColor = () => {
     const val = colorInput.trim().toUpperCase();
@@ -79,6 +132,16 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
     setAddingCapacity(false);
   };
 
+  const confirmAddChip = () => {
+    const val = chipInput.trim().toUpperCase();
+    if (val && !availableChips.includes(val)) {
+      setExtraChips((prev) => [...prev, val]);
+      setChip(val);
+    }
+    setChipInput("");
+    setAddingChip(false);
+  };
+
   const Icon = getCategoryIcon(product.name);
 
   const capacityLabel = product.capacities[0]?.includes("mm")
@@ -88,15 +151,17 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
     : "Capacidad";
 
   const fallbackColor = product.colors.length === 1 ? product.colors[0] : "";
-  const fallbackCapacity = product.capacities.length === 1 ? product.capacities[0] : "";
+  const fallbackChip = availableChips.length === 1 ? availableChips[0] : "";
   const selectedColor = color || fallbackColor;
-  const selectedCapacity = capacity || fallbackCapacity;
+  const selectedChip = chip || fallbackChip;
 
   const normalizedColor = selectedColor === NO_COLOR_LABEL ? null : selectedColor || null;
   const normalizedCapacity = selectedCapacity === NO_CAPACITY_LABEL ? null : selectedCapacity || null;
+  const normalizedChip = selectedChip || null;
 
   const handleSubmit = async () => {
     if (!selectedColor || !selectedCapacity || !serialNumber || !partNumber) return;
+    if (isMac && !selectedChip) return;
 
     setSubmitError(null);
     const fullPartNumber = partNumber.endsWith("/A") ? partNumber : `${partNumber}/A`;
@@ -104,6 +169,7 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
       product: product.name,
       color: normalizedColor,
       capacity: normalizedCapacity,
+      chip: isMac ? normalizedChip : null,
       serialNumber,
       partNumber: fullPartNumber,
     });
@@ -118,15 +184,24 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
       setRegistered(false);
       setColor("");
       setCapacity("");
+      setChip("");
       setSerialNumber("");
       setPartNumber("");
       setExtraColors([]);
       setExtraCapacities([]);
+      setExtraChips([]);
       onSuccess?.();
     }, 2000);
   };
 
-  const canSubmit = selectedColor && selectedCapacity && serialNumber && partNumber && !registered && !isSubmitting;
+  const canSubmit =
+    selectedColor &&
+    selectedCapacity &&
+    (!isMac || selectedChip) &&
+    serialNumber &&
+    partNumber &&
+    !registered &&
+    !isSubmitting;
 
   return (
     <div className="animate-scale-in space-y-6 rounded-2xl glass-card p-6">
@@ -261,6 +336,73 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
         </div>
       </div>
 
+      {/* Chip — solo para Mac/MacBook: oculto hasta elegir capacidad */}
+      {isMac && !selectedCapacity && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          <span>Selecciona una capacidad para ver las opciones de CPU / GPU</span>
+        </div>
+      )}
+      {isMac && selectedCapacity && (
+        <div className="space-y-2.5">
+          <label className="text-[0.6875rem] font-bold uppercase tracking-widest text-category-label">
+            CPU / GPU
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {availableChips.map((c) => (
+              <button
+                key={c}
+                onClick={() => setChip(c)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+                  selectedChip === c ? "chip-active" : "chip-idle"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+
+            {/* Inline add chip */}
+            {addingChip ? (
+              <div className="flex items-center gap-1">
+                <input
+                  ref={chipInputRef}
+                  autoFocus
+                  type="text"
+                  value={chipInput}
+                  onChange={(e) => setChipInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") confirmAddChip();
+                    if (e.key === "Escape") { setChipInput(""); setAddingChip(false); }
+                  }}
+                  placeholder="Ej: 10C CPU / 8C GPU"
+                  className="w-44 rounded-lg border border-border bg-muted/40 px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+                <button
+                  onClick={confirmAddChip}
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-accent-foreground hover:opacity-80 transition-opacity"
+                >
+                  <Check className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => { setChipInput(""); setAddingChip(false); }}
+                  className="flex h-6 w-6 items-center justify-center rounded-md bg-muted text-muted-foreground hover:opacity-80 transition-opacity"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setAddingChip(true); setTimeout(() => chipInputRef.current?.focus(), 0); }}
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+                title="Agregar configuración de chip"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Serial Number */}
       <div className="space-y-2.5">
         <label className="text-[0.6875rem] font-bold uppercase tracking-widest text-category-label">
@@ -297,16 +439,16 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
       </div>
 
       {/* Selection Summary */}
-      {(selectedColor || selectedCapacity) && (
+      {(selectedColor || selectedCapacity || (isMac && selectedChip)) && (
         <div className="animate-fade-in rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-          {normalizedColor === null && normalizedCapacity === null ? (
+          {normalizedColor === null && normalizedCapacity === null && !selectedChip ? (
             <span className="font-medium text-foreground">Sin capacidad y sin color</span>
           ) : (
-            <>
-              {selectedColor && <span className="font-medium text-foreground">{selectedColor}</span>}
-              {selectedColor && selectedCapacity && <span className="mx-1.5">·</span>}
-              {selectedCapacity && <span className="font-medium text-foreground">{selectedCapacity}</span>}
-            </>
+            <span className="font-medium text-foreground">
+              {[selectedColor, selectedCapacity, isMac && selectedChip ? selectedChip : null]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
           )}
         </div>
       )}

@@ -1,11 +1,15 @@
-import { useState } from "react";
-import { FileText, Sparkles, UserSearch, Package } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { FileText, Sparkles, UserSearch, Package, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductSelector } from "@/components/factura/ProductSelector";
 import { SelectedProductsList } from "@/components/factura/SelectedProductsList";
 import type { ProductVariant } from "@/types/productsType";
 import { DniSearch } from "@/components/factura/DniSearch";
 import { useInvoiceTestPdfPreview, useBulkToggleSoldItems, useProducts } from "@/services/api-query";
+import { DayPicker } from "react-day-picker";
+import { es } from "date-fns/locale";
+import { format } from "date-fns";
+import "react-day-picker/style.css";
 
 // Tipo extendido para incluir información del producto base
 interface SelectedProduct extends ProductVariant {
@@ -25,6 +29,19 @@ const Factura = () => {
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [customerData, setCustomerData] = useState<DniResult | null>(null);
   const [resetKey, setResetKey] = useState(0);
+  const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
+        setDatePickerOpen(false);
+      }
+    };
+    if (datePickerOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [datePickerOpen]);
   const { mutateAsync: generateInvoiceTestPdf, isPending: isGeneratingPdf } = useInvoiceTestPdfPreview();
   const { mutateAsync: bulkToggleSold, isPending: isTogglingStatus } = useBulkToggleSoldItems();
   const { refetch: refetchProducts } = useProducts();
@@ -57,13 +74,12 @@ const Factura = () => {
 
     console.log("IDs de items a marcar como vendidos:", itemIds);
 
+    // Formatear la fecha seleccionada al formato requerido por el backend
+    const formattedDate = format(invoiceDate, "MMMM dd, yyyy");
+
     // Crear el body con la estructura de Invoice
     const invoiceBody = {
-      order_date: new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "2-digit"
-      }),
+      order_date: formattedDate,
       order_number: `W${Date.now().toString().slice(-10)}`, // Generar número único
       customer: {
         name: customerData?.full_name || "Cliente sin nombre",
@@ -83,11 +99,7 @@ const Factura = () => {
       })),
       invoice_info: {
         invoice_number: `MA${Date.now().toString().slice(-8)}`, // Generar número único
-        invoice_date: new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "2-digit"
-        })
+        invoice_date: formattedDate
       }
     };
     console.log("Body para enviar al backend:", JSON.stringify(invoiceBody, null, 2));
@@ -161,6 +173,47 @@ const Factura = () => {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Selecciona los productos iPhone para tu cotización. Consulta el DNI del cliente y genera un PDF profesional.
               </p>
+            </div>
+
+            {/* Date Picker */}
+            <div ref={datePickerRef} className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-3 relative">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-medium text-foreground">
+                  Fecha de la cotización
+                </h3>
+              </div>
+              {/* Trigger */}
+              <button
+                type="button"
+                onClick={() => setDatePickerOpen((o) => !o)}
+                className="flex items-center justify-between w-full rounded-xl border border-border bg-muted/40 hover:bg-muted/70 transition-colors px-4 py-2.5 text-sm"
+              >
+                <span className="font-medium text-foreground">
+                  {format(invoiceDate, "dd/MM/yyyy")}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {datePickerOpen ? "Cerrar" : "Cambiar fecha"}
+                </span>
+              </button>
+              {/* Calendar dropdown */}
+              {datePickerOpen && (
+                <div className="absolute left-6 z-50 mt-1 w-fit bg-popover border border-border rounded-2xl shadow-lg p-3">
+                  <DayPicker
+                    mode="single"
+                    selected={invoiceDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setInvoiceDate(date);
+                        setDatePickerOpen(false);
+                      }
+                    }}
+                    locale={es}
+                    captionLayout="dropdown"
+                    className="p-0!"
+                  />
+                </div>
+              )}
             </div>
 
             {/* DNI Search Module */}
