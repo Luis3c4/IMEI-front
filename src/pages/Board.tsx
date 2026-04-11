@@ -84,9 +84,9 @@ export const KanbanBoard = () => {
             {/* Main Content */}
             <main className="container mx-auto px-4 py-8 space-y-6">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:min-h-109">
                     {/* Left: Date + DniSearch + customer result */}
-                    <div className="space-y-4 md:min-h-109">
+                    <div className="space-y-4 ">
                         <DatePickerCard date={invoiceDate} onDateChange={setInvoiceDate} />
 
                         <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">
@@ -101,12 +101,14 @@ export const KanbanBoard = () => {
                     </div>
 
                     {/* Right: product interest selector */}
-                    <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-3">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Producto de interés</p>
-                        <BoardProductSelector
-                            selected={interestedProducts}
-                            onChange={setInterestedProducts}
-                        />
+                    <div className="bg-card rounded-2xl border border-border shadow-card p-6 flex flex-col gap-3 md:max-h-109">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">Producto de interés</p>
+                        <div className="flex-1 overflow-y-auto min-h-0">
+                            <BoardProductSelector
+                                selected={interestedProducts}
+                                onChange={setInterestedProducts}
+                            />
+                        </div>
                     </div>
                 </div>
 
