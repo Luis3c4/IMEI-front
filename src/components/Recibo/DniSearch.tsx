@@ -12,9 +12,10 @@ interface DniResult {
 
 interface DniSearchProps {
   onCustomerDataChange?: (data: DniResult | null) => void;
+  hideResult?: boolean;
 }
 
-export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
+export const DniSearch = ({ onCustomerDataChange, hideResult }: DniSearchProps) => {
   const [dni, setDni] = useState("");
   const [phone, setPhone] = useState("");
   const [result, setResult] = useState<DniResult | null>(null);
@@ -89,7 +90,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
   return (
     <div className="space-y-4">
       <div className="flex gap-3">
-        <div className="relative flex-[17]">
+        <div className="relative flex-17">
           <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
@@ -101,7 +102,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
           />
         </div>
         
-        <div className="relative flex-[17]">
+        <div className="relative flex-17">
           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
@@ -116,7 +117,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
         <Button
           onClick={handleSearch}
           disabled={dni.length !== 8 || isFetching}
-          className="h-11 flex-[6]"
+          className="h-11 flex-6"
         >
           <Search className="w-4 h-4 mr-2" />
           {isFetching ? "Buscando..." : "Buscar"}
@@ -124,7 +125,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
       </div>
 
       {/* Error Message */}
-      {error && (
+      {!hideResult && error && (
         <div className="bg-destructive/10 rounded-xl border border-destructive/20 p-4 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex items-center gap-2 text-sm font-medium text-destructive">
             <AlertCircle className="w-4 h-4" />
@@ -137,7 +138,7 @@ export const DniSearch = ({ onCustomerDataChange }: DniSearchProps) => {
       )}
 
       {/* Results */}
-      {result && (
+      {!hideResult && result && (
         <div className="bg-background/50 rounded-xl border border-border/50 p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
             <User className="w-4 h-4" />
