@@ -7,7 +7,7 @@ export interface ClientData {
   fullName: string;
   telefono: string;
   fecha: string;
-  products: { label: string; unit_price: number }[];
+  products: { label: string }[];
   phase: KanbanPhase;
 }
 

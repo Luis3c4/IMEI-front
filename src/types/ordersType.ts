@@ -3,9 +3,7 @@ export type KanbanPhase = "pedido" | "reservado" | "entregado" | "completado";
 export interface OrderProduct {
   id: number;
   product_id: number;
-  variant_id: number | null;
   label: string;
-  unit_price: number;
 }
 
 export interface Order {
@@ -29,9 +27,8 @@ export interface CreateOrderPayload {
   order_date: string;
   products: {
     product_id: number;
-    variant_id?: number | null;
     label: string;
-    unit_price: number;
+    unit_price?: number;
   }[];
 }
 

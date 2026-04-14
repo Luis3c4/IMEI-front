@@ -13,6 +13,7 @@ interface DniResult {
 interface DniSearchProps {
   onCustomerDataChange?: (data: DniResult | null) => void;
   hideResult?: boolean;
+  resetKey?: number;
 }
 
 export const DniSearch = ({ onCustomerDataChange, hideResult }: DniSearchProps) => {

@@ -5,8 +5,7 @@ import { useProducts, useMacbookVariants } from "@/services/api-query";
 interface ProductInterest {
   label: string;
   product_id: number;
-  variant_id: number | null;
-  unit_price: number;
+  price?: number;
 }
 
 interface BoardProductSelectorProps {
@@ -191,32 +190,11 @@ export const BoardProductSelector = ({ selected, onChange }: BoardProductSelecto
     ].filter(Boolean);
     const label = parts.join(" · ");
 
-    // Resolve variant_id and unit_price from the products cache
-    let variantId: number | null = null;
-    let unitPrice = 0;
-    if (resolvedModel) {
-      const p = products.find((x) => x.id === resolvedModel.base_product_id);
-      if (p) {
-        const variant = p.product_variants.find(
-          (v) =>
-            (capacity == null || capacity === "N/A" || v.capacity === capacity) &&
-            (color == null || color === "N/A" || v.color === color) &&
-            (chip == null || v.chip === chip)
-        );
-        if (variant) {
-          variantId = variant.id;
-          unitPrice = variant.price ?? 0;
-        }
-      }
-    }
-
     onChange([
       ...selected,
       {
         label,
         product_id: resolvedModel?.base_product_id ?? 0,
-        variant_id: variantId,
-        unit_price: unitPrice,
       },
     ]);
     reset();
@@ -250,7 +228,7 @@ export const BoardProductSelector = ({ selected, onChange }: BoardProductSelecto
 
   return (
     <div className="space-y-3">
-      {/* Selected chips */}
+      {/* Selected products */}
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selected.map((p, i) => (

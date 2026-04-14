@@ -25,6 +25,7 @@ const PHASES: { key: KanbanPhase; label: string }[] = [
 
 export const KanbanBoard = () => {
     const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
+    const [dniResetKey, setDniResetKey] = useState(0);
     const [customerData, setCustomerData] = useState<{
         full_name: string;
         document_number: string;
@@ -33,8 +34,7 @@ export const KanbanBoard = () => {
     const [interestedProducts, setInterestedProducts] = useState<{
         label: string;
         product_id: number;
-        variant_id: number | null;
-        unit_price: number;
+        price?: number;
     }[]>([]);
 
     const { data: orders = [], isLoading } = useOrders();
@@ -49,7 +49,7 @@ export const KanbanBoard = () => {
         fullName: o.customer_name ?? "",
         telefono: o.customer_phone ?? "",
         fecha: o.order_date,
-        products: o.products.map((p) => ({ label: p.label, unit_price: p.unit_price })),
+        products: o.products.map((p) => ({ label: p.label })),
         phase: o.phase,
     }));
 
@@ -62,12 +62,13 @@ export const KanbanBoard = () => {
                 customer_name: customerData.full_name,
                 customer_phone: customerData.phone,
                 order_date: format(invoiceDate, "dd/MM/yyyy"),
-                products: interestedProducts,
+                products: interestedProducts.map(({ price, ...p }) => ({ ...p, unit_price: price ?? 0 })),
             },
             {
                 onSuccess: () => {
                     setCustomerData(null);
                     setInterestedProducts([]);
+                    setDniResetKey((k) => k + 1);
                 },
             }
         );
@@ -79,6 +80,13 @@ export const KanbanBoard = () => {
 
     const handleDeleteCard = (id: string) => {
         deleteOrder.mutate(id);
+    };
+
+    const updateProductPrice = (index: number, value: string) => {
+        const price = value === "" ? undefined : parseFloat(value);
+        setInterestedProducts((prev) =>
+            prev.map((p, i) => (i === index ? { ...p, price } : p))
+        );
     };
 
     return (
@@ -122,7 +130,7 @@ export const KanbanBoard = () => {
                                     Consulta por DNI
                                 </h3>
                             </div>
-                            <DniSearch onCustomerDataChange={setCustomerData} />
+                            <DniSearch key={dniResetKey} onCustomerDataChange={setCustomerData} />
                         </div>
                     </div>
 
@@ -138,7 +146,26 @@ export const KanbanBoard = () => {
                     </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex items-center justify-end gap-3 flex-wrap">
+                    {interestedProducts.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {interestedProducts.map((p, i) => (
+                                <div key={i} className="flex items-center gap-2 text-sm font-semibold bg-primary/10 border border-primary/20 text-foreground px-3 py-2 rounded-lg shadow-sm">
+                                    <span className="truncate max-w-40">{p.label}</span>
+                                    <span className="text-muted-foreground shrink-0">S/.</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={p.price ?? ""}
+                                        onChange={(e) => updateProductPrice(i, e.target.value)}
+                                        placeholder="_________"
+                                        className="w-16 bg-transparent text-right outline-none placeholder:text-muted-foreground/50 text-foreground font-semibold"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <Button
                         onClick={handleAddClient}
                         disabled={!customerData || interestedProducts.length === 0 || createOrder.isPending}
