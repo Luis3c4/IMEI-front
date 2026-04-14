@@ -7,11 +7,9 @@ import type { LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types
 import type { Product as HierarchicalProduct, ProductHierarchyResponse } from "../types/mockProductsType";
 import type { CustomerListResponse } from "../types/clientesType";
 import { supabase } from "../lib/supabase";
+import type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants } from "../types/ordersType";
 
-export interface MacbookVariants {
-  capacities: string[];
-  chips_by_capacity: Record<string, string[]>;
-}
+export type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants };
 // ============= Query Keys =============
 export const queryKeys = {
   balance: ["balance"] as const,
@@ -441,6 +439,121 @@ export function useCreateProduct(
       if (options?.onSuccess) {
         await options.onSuccess(data, variables, onMutateResult, context);
       }
+    },
+  });
+}
+
+// ============= Orders (Kanban Board) =============
+
+// Añadir query key
+export const orderQueryKey = ["orders"] as const;
+
+async function getOrders(): Promise<Order[]> {
+  const response = await fetch(`${API_URL}/api/orders/`);
+  if (!response.ok) throw new Error("Error al obtener pedidos");
+  return response.json();
+}
+
+async function createOrder(payload: CreateOrderPayload): Promise<Order> {
+  const response = await fetch(`${API_URL}/api/orders/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err?.detail || err?.error || "Error al crear pedido");
+  }
+  return response.json();
+}
+
+async function updateOrderPhase(orderId: string, phase: KanbanPhase): Promise<Order> {
+  const response = await fetch(`${API_URL}/api/orders/${orderId}/phase`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phase }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err?.detail || err?.error || "Error al actualizar fase");
+  }
+  return response.json();
+}
+
+async function deleteOrder(orderId: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/orders/${orderId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok && response.status !== 204) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err?.detail || err?.error || "Error al eliminar pedido");
+  }
+}
+
+export function useOrders() {
+  return useQuery<Order[]>({
+    queryKey: orderQueryKey,
+    queryFn: getOrders,
+    refetchInterval: 30_000, // sync compartido cada 30s
+    staleTime: 10_000,
+  });
+}
+
+export function useCreateOrder() {
+  const queryClient = useQueryClient();
+  return useMutation<Order, Error, CreateOrderPayload>({
+    mutationFn: createOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orderQueryKey });
+    },
+  });
+}
+
+export function useUpdateOrderPhase() {
+  const queryClient = useQueryClient();
+  return useMutation<Order, Error, { orderId: string; phase: KanbanPhase }>({
+    mutationFn: ({ orderId, phase }) => updateOrderPhase(orderId, phase),
+    onMutate: async ({ orderId, phase }) => {
+      // Optimistic update
+      await queryClient.cancelQueries({ queryKey: orderQueryKey });
+      const previous = queryClient.getQueryData<Order[]>(orderQueryKey);
+      queryClient.setQueryData<Order[]>(orderQueryKey, (old) =>
+        old ? old.map((o) => (o.id === orderId ? { ...o, phase } : o)) : []
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      const ctx = context as { previous?: Order[] } | undefined;
+      if (ctx?.previous) {
+        queryClient.setQueryData(orderQueryKey, ctx.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: orderQueryKey });
+    },
+  });
+}
+
+export function useDeleteOrder() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: deleteOrder,
+    onMutate: async (orderId) => {
+      await queryClient.cancelQueries({ queryKey: orderQueryKey });
+      const previous = queryClient.getQueryData<Order[]>(orderQueryKey);
+      queryClient.setQueryData<Order[]>(orderQueryKey, (old) =>
+        old ? old.filter((o) => o.id !== orderId) : []
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      const ctx = context as { previous?: Order[] } | undefined;
+      if (ctx?.previous) {
+        queryClient.setQueryData(orderQueryKey, ctx.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: orderQueryKey });
     },
   });
 }

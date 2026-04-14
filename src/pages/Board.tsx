@@ -7,6 +7,12 @@ import { DatePickerCard } from "@/components/Recibo/DatePicker";
 import { BoardProductSelector } from "@/components/board/BoardProductSelector";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import {
+    useOrders,
+    useCreateOrder,
+    useUpdateOrderPhase,
+    useDeleteOrder,
+} from "@/services/api-query";
 
 export type KanbanPhase = "pedido" | "reservado" | "entregado" | "completado";
 
@@ -18,41 +24,61 @@ const PHASES: { key: KanbanPhase; label: string }[] = [
 ];
 
 export const KanbanBoard = () => {
-    const [cards, setCards] = useState<ClientData[]>([]);
     const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
     const [customerData, setCustomerData] = useState<{
         full_name: string;
         document_number: string;
         phone?: string;
     } | null>(null);
-    const [interestedProducts, setInterestedProducts] = useState<{ label: string }[]>([]);
+    const [interestedProducts, setInterestedProducts] = useState<{
+        label: string;
+        product_id: number;
+        variant_id: number | null;
+        unit_price: number;
+    }[]>([]);
+
+    const { data: orders = [], isLoading } = useOrders();
+    const createOrder = useCreateOrder();
+    const updatePhase = useUpdateOrderPhase();
+    const deleteOrder = useDeleteOrder();
+
+    // Map API orders → ClientData for display
+    const cards: ClientData[] = orders.map((o) => ({
+        id: o.id,
+        dni: o.customer_dni ?? "",
+        fullName: o.customer_name ?? "",
+        telefono: o.customer_phone ?? "",
+        fecha: o.order_date,
+        products: o.products.map((p) => ({ label: p.label, unit_price: p.unit_price })),
+        phase: o.phase,
+    }));
 
     const handleAddClient = () => {
-        if (!customerData) return;
+        if (!customerData || interestedProducts.length === 0) return;
 
-        const client: ClientData = {
-            id: crypto.randomUUID(),
-            dni: customerData.document_number,
-            fullName: customerData.full_name,
-            telefono: customerData.phone || "",
-            fecha: format(invoiceDate, "dd/MM/yyyy"),
-            products: interestedProducts.map((p) => p.label),
-            phase: "pedido",
-        };
-
-        setCards((prev) => [...prev, client]);
-        setCustomerData(null);
-        setInterestedProducts([]);
-    };
-
-    const handleMoveCard = (id: string, newPhase: KanbanPhase) => {
-        setCards((prev) =>
-            prev.map((c) => (c.id === id ? { ...c, phase: newPhase } : c))
+        createOrder.mutate(
+            {
+                customer_dni: customerData.document_number,
+                customer_name: customerData.full_name,
+                customer_phone: customerData.phone,
+                order_date: format(invoiceDate, "dd/MM/yyyy"),
+                products: interestedProducts,
+            },
+            {
+                onSuccess: () => {
+                    setCustomerData(null);
+                    setInterestedProducts([]);
+                },
+            }
         );
     };
 
+    const handleMoveCard = (id: string, newPhase: KanbanPhase) => {
+        updatePhase.mutate({ orderId: id, phase: newPhase });
+    };
+
     const handleDeleteCard = (id: string) => {
-        setCards((prev) => prev.filter((c) => c.id !== id));
+        deleteOrder.mutate(id);
     };
 
     return (
@@ -74,7 +100,7 @@ export const KanbanBoard = () => {
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-                                {cards.length} pedidos
+                                {isLoading ? "…" : `${cards.length} pedidos`}
                             </span>
                         </div>
                     </div>
@@ -113,9 +139,12 @@ export const KanbanBoard = () => {
                 </div>
 
                 <div className="flex justify-end">
-                    <Button onClick={handleAddClient} disabled={!customerData || interestedProducts.length === 0}>
+                    <Button
+                        onClick={handleAddClient}
+                        disabled={!customerData || interestedProducts.length === 0 || createOrder.isPending}
+                    >
                         <Plus className="w-4 h-4 mr-2" />
-                        Agregar Pedido
+                        {createOrder.isPending ? "Guardando…" : "Agregar Pedido"}
                     </Button>
                 </div>
 

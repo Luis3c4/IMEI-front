@@ -7,7 +7,7 @@ export interface ClientData {
   fullName: string;
   telefono: string;
   fecha: string;
-  products: string[];
+  products: { label: string; unit_price: number }[];
   phase: KanbanPhase;
 }
 
@@ -48,7 +48,7 @@ export const ClientCard = ({ data, onMove, onDelete }: ClientCardProps) => {
       {data.products.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {data.products.map((p, i) => (
-            <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{p}</span>
+            <span key={i} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{p.label}</span>
           ))}
         </div>
       )}

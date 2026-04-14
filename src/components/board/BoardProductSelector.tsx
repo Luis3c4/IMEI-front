@@ -4,6 +4,9 @@ import { useProducts, useMacbookVariants } from "@/services/api-query";
 
 interface ProductInterest {
   label: string;
+  product_id: number;
+  variant_id: number | null;
+  unit_price: number;
 }
 
 interface BoardProductSelectorProps {
@@ -140,7 +143,7 @@ export const BoardProductSelector = ({ selected, onChange }: BoardProductSelecto
     const noCapacity = !!p && p.product_variants.length > 0 && p.product_variants[0].capacity === null;
     const noColor = !!p && p.product_variants.length > 0 && p.product_variants[0].color === null;
     if (noCapacity && noColor) {
-      addProduct(model.name, null, null, null);
+      addProduct(model.name, null, null, null, model);
     } else if (noCapacity) {
       setSelectedCapacity("N/A");
       setStep("color");
@@ -178,7 +181,8 @@ export const BoardProductSelector = ({ selected, onChange }: BoardProductSelecto
     addProduct(selectedModel!.name, selectedCapacity, color, null);
   };
 
-  const addProduct = (name: string, capacity: string | null, color: string | null, chip: string | null) => {
+  const addProduct = (name: string, capacity: string | null, color: string | null, chip: string | null, modelOverride?: ProductModel) => {
+    const resolvedModel = modelOverride ?? selectedModel;
     const parts = [
       name,
       capacity && capacity !== "N/A" ? capacity : null,
@@ -186,7 +190,35 @@ export const BoardProductSelector = ({ selected, onChange }: BoardProductSelecto
       color && color !== "N/A" ? color : null,
     ].filter(Boolean);
     const label = parts.join(" · ");
-    onChange([...selected, { label }]);
+
+    // Resolve variant_id and unit_price from the products cache
+    let variantId: number | null = null;
+    let unitPrice = 0;
+    if (resolvedModel) {
+      const p = products.find((x) => x.id === resolvedModel.base_product_id);
+      if (p) {
+        const variant = p.product_variants.find(
+          (v) =>
+            (capacity == null || capacity === "N/A" || v.capacity === capacity) &&
+            (color == null || color === "N/A" || v.color === color) &&
+            (chip == null || v.chip === chip)
+        );
+        if (variant) {
+          variantId = variant.id;
+          unitPrice = variant.price ?? 0;
+        }
+      }
+    }
+
+    onChange([
+      ...selected,
+      {
+        label,
+        product_id: resolvedModel?.base_product_id ?? 0,
+        variant_id: variantId,
+        unit_price: unitPrice,
+      },
+    ]);
     reset();
   };
 
