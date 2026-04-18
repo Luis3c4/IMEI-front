@@ -1,5 +1,5 @@
 import { useState, useDeferredValue } from "react";
-import { Users, Search, UserCircle, Phone, CreditCard, Calendar, Loader2, AlertCircle, Package, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Search, UserCircle, Phone, CreditCard, Calendar, Loader2, AlertCircle, Package, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -115,12 +115,15 @@ const Clients = () => {
                   <TableHead className="px-5 py-3.5 text-[0.6875rem] font-bold uppercase tracking-widest text-muted-foreground">
                     Productos
                   </TableHead>
+                  <TableHead className="px-5 py-3.5 text-[0.6875rem] font-bold uppercase tracking-widest text-muted-foreground text-center">
+                    Recibo
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {clients.length === 0 ? (
                   <TableRow className="hover:bg-transparent border-0">
-                    <TableCell colSpan={6} className="px-5 py-14 text-center">
+                    <TableCell colSpan={7} className="px-5 py-14 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <UserCircle className="h-8 w-8 text-muted-foreground/40" />
                         <p className="text-sm text-muted-foreground">No se encontraron clientes</p>
@@ -185,6 +188,15 @@ const Clients = () => {
                         ) : (
                           <span className="text-xs text-muted-foreground/50">—</span>
                         )}
+                      </TableCell>
+                      <TableCell className="px-5 py-3.5 text-center">
+                        <button
+                          onClick={() => console.log("Recibo", client.id)}
+                          className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                          title="Ver recibo"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </button>
                       </TableCell>
                     </TableRow>
                   ))
