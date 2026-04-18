@@ -75,9 +75,9 @@ const Factura = () => {
       products: selectedProducts.map((product) => ({
         product_id: product.baseProductId, // FK a products.id (REQUERIDO)
         variant_id: product.id, // FK a product_variants.id (opcional)
+        product_item_id: product.product_items?.[0]?.id ?? null, // FK a product_items.id
         name: product.description || product.baseProductName,
         product_number: product.product_number ?? product.id.toString(),
-        serial_number: product.serial_numbers?.[0] || `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
         item_price: product.price,
         quantity_ordered: 1,
         quantity_fulfilled: 1,
