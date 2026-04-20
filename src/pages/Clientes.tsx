@@ -8,7 +8,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCustomers } from "@/services/api-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useCustomers, useCustomerInvoices, useOpenInvoicePdf, type CustomerInvoice } from "@/services/api-query";
 import { useAuth } from "@/hooks/useAuth";
 
 const formatDate = (dateStr: string) => {
@@ -18,11 +24,87 @@ const formatDate = (dateStr: string) => {
 
 const PAGE_SIZE = 20;
 
+function InvoicesModal({
+  customerId,
+  customerName,
+  onClose,
+}: {
+  customerId: number;
+  customerName: string;
+  onClose: () => void;
+}) {
+  const { data: invoices, isLoading, isError } = useCustomerInvoices(customerId);
+  const { mutate: openPdf, isPending } = useOpenInvoicePdf();
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
+            <FileText className="h-4 w-4 text-primary" />
+            Facturas de {customerName}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="mt-2">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando facturas...
+            </div>
+          ) : isError ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-destructive text-sm">
+              <AlertCircle className="h-4 w-4" />
+              Error al cargar facturas
+            </div>
+          ) : !invoices || invoices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
+              <FileText className="h-6 w-6 opacity-30" />
+              <p className="text-sm">Este cliente no tiene facturas aún</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {invoices.map((inv: CustomerInvoice) => (
+                <div
+                  key={inv.id}
+                  className="flex items-center justify-between py-3 px-1"
+                >
+                  <div className="space-y-0.5">
+                    <p className="text-[0.8125rem] font-medium text-foreground">
+                      {inv.order_number ?? inv.invoice_number}
+                    </p>
+                    <p className="text-[0.6875rem] text-muted-foreground">
+                      {inv.invoice_date}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => openPdf(inv.id)}
+                    disabled={isPending}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <FileText className="h-3 w-3" />
+                    )}
+                    Ver PDF
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const Clients = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const deferredSearch = useDeferredValue(search);
   const { user, isAdmin, isAuthenticated } = useAuth();
+  const [invoiceModal, setInvoiceModal] = useState<{ id: number; name: string } | null>(null);
 
   // Reset to page 1 when search changes
   const handleSearch = (value: string) => {
@@ -40,6 +122,13 @@ const Clients = () => {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
+      {invoiceModal && (
+        <InvoicesModal
+          customerId={invoiceModal.id}
+          customerName={invoiceModal.name}
+          onClose={() => setInvoiceModal(null)}
+        />
+      )}
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -190,8 +279,11 @@ const Clients = () => {
                         )}
                       </TableCell>
                       <TableCell className="px-5 py-3.5 text-center">
-                        <button
-                          onClick={() => console.log("Recibo", client.id)}
+                      <button
+                          onClick={() => setInvoiceModal({
+                            id: client.id,
+                            name: `${client.first_name} ${client.first_last_name}`,
+                          })}
                           className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                           title="Ver recibo"
                         >

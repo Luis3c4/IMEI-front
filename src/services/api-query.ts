@@ -20,7 +20,17 @@ export const queryKeys = {
   dni: (dniNumber: string) => ["dni", dniNumber] as const,
   customers: (userId?: string, search?: string, page?: number, pageSize?: number) => ["customers", userId, search, page, pageSize] as const,
   macbookVariants: (model: string) => ["macbookVariants", model] as const,
+  customerInvoices: (customerId: number) => ["customerInvoices", customerId] as const,
 };
+
+export interface CustomerInvoice {
+  id: number;
+  invoice_number: string;
+  order_number: string | null;
+  invoice_date: string;
+  customer_number: string;
+  created_at: string;
+}
 
 // ============= Funciones de Fetch =============
 class ApiServiceClass {
@@ -244,6 +254,41 @@ class ApiServiceClass {
     return payload;
   }
 
+  async getCustomerInvoices(customerId: number): Promise<CustomerInvoice[]> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error("No hay sesión activa. Por favor, inicia sesión.");
+    }
+    const response = await fetch(`${API_URL}/api/invoices/customer/${customerId}`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error?.detail || "Error al cargar facturas del cliente");
+    }
+    const payload = await response.json();
+    return (payload.data ?? []) as CustomerInvoice[];
+  }
+
+  async getInvoicePdf(invoiceId: number): Promise<Blob> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error("No hay sesión activa. Por favor, inicia sesión.");
+    }
+    const response = await fetch(`${API_URL}/api/invoices/${invoiceId}/pdf`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const error = await response.json();
+        throw new Error(error.detail || "Error al regenerar el PDF");
+      }
+      throw new Error("Error al regenerar el PDF");
+    }
+    return response.blob();
+  }
+
   async bulkToggleSoldItems(itemIds: number[]): Promise<void> {
     const response = await fetch(`${API_URL}/api/products/items/bulk-toggle-sold`, {
       method: "POST",
@@ -406,6 +451,38 @@ export function useInvoiceTestPdfPreview(
 ) {
   return useMutation({
     mutationFn: (invoiceBody: unknown) => apiService.getInvoiceTestPdfPreview(invoiceBody),
+    ...options,
+  });
+}
+
+/**
+ * Hook para obtener las facturas de un cliente (activado solo cuando el modal está abierto)
+ */
+export function useCustomerInvoices(
+  customerId: number | null,
+  options?: Omit<UseQueryOptions<CustomerInvoice[]>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.customerInvoices(customerId ?? 0),
+    queryFn: () => apiService.getCustomerInvoices(customerId!),
+    enabled: customerId !== null,
+    ...options,
+  });
+}
+
+/**
+ * Hook para regenerar y abrir el PDF de una factura existente
+ */
+export function useOpenInvoicePdf(
+  options?: UseMutationOptions<Blob, Error, number>
+) {
+  return useMutation({
+    mutationFn: (invoiceId: number) => apiService.getInvoicePdf(invoiceId),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    },
     ...options,
   });
 }
