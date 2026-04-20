@@ -4,11 +4,12 @@ import { rootRoute } from './root'
 import App from '../App'
 import IMEICheck from '@/pages/IMEICheck'
 import LoginPage from '@/pages/LoginPage'
-import Factura from '@/pages/Factura'
+import Factura from '@/pages/Recibo'
 import Inventario from '@/pages/Inventario'
 import Registro from '@/pages/Registro'
 import { ProtectedLayout } from '@/components/ProtectedLayout'
 import Clientes from '@/pages/Clientes'
+import { KanbanBoard } from '@/pages/Board'
 
 // Ruta layout protegida con shell (sidebar) compartida
 export const protectedLayoutRoute = createRoute({
@@ -53,6 +54,12 @@ export const clientesRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: 'clientes',
   component: Clientes,
+})
+
+export const boardRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: 'board',
+  component: KanbanBoard,
 })
 
 // Ruta protegida: home (fallback)

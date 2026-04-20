@@ -1,15 +1,13 @@
-import { useState, useRef, useEffect } from "react";
-import { FileText, Sparkles, UserSearch, Package, CalendarDays } from "lucide-react";
+import { useState } from "react";
+import { FileText, Sparkles, UserSearch, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProductSelector } from "@/components/factura/ProductSelector";
-import { SelectedProductsList } from "@/components/factura/SelectedProductsList";
+import { ProductSelector } from "@/components/Recibo/ProductSelector";
+import { SelectedProductsList } from "@/components/Recibo/SelectedProductsList";
 import type { ProductVariant } from "@/types/productsType";
-import { DniSearch } from "@/components/factura/DniSearch";
+import { DniSearch } from "@/components/Recibo/DniSearch";
+import { DatePickerCard } from "@/components/Recibo/DatePicker";
 import { useInvoiceTestPdfPreview, useBulkToggleSoldItems, useProducts } from "@/services/api-query";
-import { DayPicker } from "react-day-picker";
-import { es } from "date-fns/locale";
 import { format } from "date-fns";
-import "react-day-picker/style.css";
 
 // Tipo extendido para incluir información del producto base
 interface SelectedProduct extends ProductVariant {
@@ -30,18 +28,6 @@ const Factura = () => {
   const [customerData, setCustomerData] = useState<DniResult | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const datePickerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
-        setDatePickerOpen(false);
-      }
-    };
-    if (datePickerOpen) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [datePickerOpen]);
   const { mutateAsync: generateInvoiceTestPdf, isPending: isGeneratingPdf } = useInvoiceTestPdfPreview();
   const { mutateAsync: bulkToggleSold, isPending: isTogglingStatus } = useBulkToggleSoldItems();
   const { refetch: refetchProducts } = useProducts();
@@ -89,9 +75,9 @@ const Factura = () => {
       products: selectedProducts.map((product) => ({
         product_id: product.baseProductId, // FK a products.id (REQUERIDO)
         variant_id: product.id, // FK a product_variants.id (opcional)
+        product_item_id: product.product_items?.[0]?.id ?? null, // FK a product_items.id
         name: product.description || product.baseProductName,
         product_number: product.product_number ?? product.id.toString(),
-        serial_number: product.serial_numbers?.[0] || `SN${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
         item_price: product.price,
         quantity_ordered: 1,
         quantity_fulfilled: 1,
@@ -176,45 +162,7 @@ const Factura = () => {
             </div>
 
             {/* Date Picker */}
-            <div ref={datePickerRef} className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-3 relative">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-medium text-foreground">
-                  Fecha de la cotización
-                </h3>
-              </div>
-              {/* Trigger */}
-              <button
-                type="button"
-                onClick={() => setDatePickerOpen((o) => !o)}
-                className="flex items-center justify-between w-full rounded-xl border border-border bg-muted/40 hover:bg-muted/70 transition-colors px-4 py-2.5 text-sm"
-              >
-                <span className="font-medium text-foreground">
-                  {format(invoiceDate, "dd/MM/yyyy")}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {datePickerOpen ? "Cerrar" : "Cambiar fecha"}
-                </span>
-              </button>
-              {/* Calendar dropdown */}
-              {datePickerOpen && (
-                <div className="absolute left-6 z-50 mt-1 w-fit bg-popover border border-border rounded-2xl shadow-lg p-3">
-                  <DayPicker
-                    mode="single"
-                    selected={invoiceDate}
-                    onSelect={(date) => {
-                      if (date) {
-                        setInvoiceDate(date);
-                        setDatePickerOpen(false);
-                      }
-                    }}
-                    locale={es}
-                    captionLayout="dropdown"
-                    className="p-0!"
-                  />
-                </div>
-              )}
-            </div>
+            <DatePickerCard date={invoiceDate} onDateChange={setInvoiceDate} />
 
             {/* DNI Search Module */}
             <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">

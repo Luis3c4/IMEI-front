@@ -91,13 +91,13 @@ const data = {
       ],
     },
     {
-      title: "Documentation",
+      title: "Board",
       url: "#",
       icon: BookOpen,
       items: [
         {
-          title: "Introduction",
-          url: "#",
+          title: "Gestión de Pedidos",
+          url: "/board",
         },
         {
           title: "Get Started",

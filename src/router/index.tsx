@@ -1,11 +1,11 @@
 // src/router/index.tsx
 import { createRouter } from '@tanstack/react-router'
 import { rootRoute } from './root'
-import { clientesRoute, FacturaRoute, imeiCheckRoute, indexRoute, InventarioRoute, loginRoute, protectedLayoutRoute, registroRoute } from './route-definitions'
+import { boardRoute, clientesRoute, FacturaRoute, imeiCheckRoute, indexRoute, InventarioRoute, loginRoute, protectedLayoutRoute, registroRoute } from './route-definitions'
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  protectedLayoutRoute.addChildren([indexRoute, imeiCheckRoute, FacturaRoute, InventarioRoute, registroRoute, clientesRoute]),
+  protectedLayoutRoute.addChildren([indexRoute, imeiCheckRoute, FacturaRoute, InventarioRoute, registroRoute, clientesRoute, boardRoute]),
 ])
 
 export const router = createRouter({
