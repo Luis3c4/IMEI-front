@@ -85,8 +85,8 @@ const data = {
           url: "/clientes",
         },
         {
-          title: "Quantum",
-          url: "#",
+          title: "Historial de Ventas",
+          url: "/historial",
         },
       ],
     },

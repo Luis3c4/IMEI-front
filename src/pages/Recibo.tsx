@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Sparkles, UserSearch, Package } from "lucide-react";
+import { FileText, Sparkles, UserSearch, Package, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductSelector } from "@/components/Recibo/ProductSelector";
 import { SelectedProductsList } from "@/components/Recibo/SelectedProductsList";
@@ -8,6 +8,7 @@ import { DniSearch } from "@/components/Recibo/DniSearch";
 import { DatePickerCard } from "@/components/Recibo/DatePicker";
 import { useInvoiceTestPdfPreview, useBulkToggleSoldItems, useProducts } from "@/services/api-query";
 import { format } from "date-fns";
+import { PaymentInfo, type PaymentData } from "@/components/Recibo/PaymentInfo";
 
 // Tipo extendido para incluir información del producto base
 interface SelectedProduct extends ProductVariant {
@@ -31,7 +32,14 @@ const Factura = () => {
   const { mutateAsync: generateInvoiceTestPdf, isPending: isGeneratingPdf } = useInvoiceTestPdfPreview();
   const { mutateAsync: bulkToggleSold, isPending: isTogglingStatus } = useBulkToggleSoldItems();
   const { refetch: refetchProducts } = useProducts();
-
+  const [paymentData, setPaymentData] = useState<PaymentData>({
+    departamento: "",
+    provincia: "",
+    agencia: "",
+    banco: "",
+    total: "",
+    titular: "",
+  });
   const handleAddProduct = (product: SelectedProduct) => {
     setSelectedProducts((prev) => [...prev, { ...product, quantity: 1 }]);
   };
@@ -71,6 +79,14 @@ const Factura = () => {
         name: customerData?.full_name || "Cliente sin nombre",
         dni: customerData?.document_number || "",
         phone: customerData?.phone || ""
+      },
+      payment_info: {
+        agencia: paymentData.agencia?.trim() || null,
+        departamento: paymentData.departamento?.trim() || null,
+        provincia: paymentData.provincia?.trim() || null,
+        banco: paymentData.banco?.trim() || null,
+        titular: paymentData.titular?.trim() || null,
+        total: paymentData.total?.trim() || null,
       },
       products: selectedProducts.map((product) => ({
         product_id: product.baseProductId, // FK a products.id (REQUERIDO)
@@ -193,6 +209,17 @@ const Factura = () => {
 
           {/* Right Column */}
           <div className="space-y-6">
+            {/* Payment Info Card */}
+            <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-medium text-foreground">
+                  Información de pago
+                </h3>
+              </div>
+              <PaymentInfo data={paymentData} onChange={setPaymentData} />
+            </div>
+
             {/* Selected Products Card */}
             <div className="bg-card rounded-2xl border border-border shadow-card p-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -225,7 +252,7 @@ const Factura = () => {
 
             {!canGeneratePDF && (
               <p className="text-xs text-muted-foreground text-center">
-                {!customerData 
+                {!customerData
                   ? "Consulta el DNI del cliente y agrega productos para generar el PDF"
                   : "Agrega al menos un producto para generar el PDF"
                 }
