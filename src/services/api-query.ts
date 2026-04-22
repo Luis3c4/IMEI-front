@@ -8,6 +8,7 @@ import type { Product as HierarchicalProduct, ProductHierarchyResponse } from ".
 import type { CustomerListResponse } from "../types/clientesType";
 import { supabase } from "../lib/supabase";
 import type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants } from "../types/ordersType";
+import type { HistorialInvoice } from "../types/historyType";
 
 export type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants };
 // ============= Query Keys =============
@@ -21,6 +22,7 @@ export const queryKeys = {
   customers: (userId?: string, search?: string, page?: number, pageSize?: number) => ["customers", userId, search, page, pageSize] as const,
   macbookVariants: (model: string) => ["macbookVariants", model] as const,
   customerInvoices: (customerId: number) => ["customerInvoices", customerId] as const,
+  historial: ["historial"] as const,
 };
 
 export interface CustomerInvoice {
@@ -302,6 +304,26 @@ class ApiServiceClass {
     }
 
     return response.json();
+  }
+
+  async getHistorialInvoices(): Promise<HistorialInvoice[]> {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const response = await fetch(`${API_URL}/api/historial`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Error al obtener historial");
+    }
+
+    const payload = await response.json();
+    return (payload.data ?? []) as HistorialInvoice[];
   }
 }
 
@@ -637,3 +659,16 @@ export function useDeleteOrder() {
 
 // Exportar también el servicio original por si se necesita
 export { apiService as IMEIAPIService };
+
+// ============= Historial (Quantum) =============
+
+export function useHistorialInvoices(
+  options?: Omit<UseQueryOptions<HistorialInvoice[]>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.historial,
+    queryFn: () => apiService.getHistorialInvoices(),
+    staleTime: 30_000,
+    ...options,
+  });
+}

@@ -10,6 +10,7 @@ import Registro from '@/pages/Registro'
 import { ProtectedLayout } from '@/components/ProtectedLayout'
 import Clientes from '@/pages/Clientes'
 import { KanbanBoard } from '@/pages/Board'
+import Historial from '@/pages/Historial'
 
 // Ruta layout protegida con shell (sidebar) compartida
 export const protectedLayoutRoute = createRoute({
@@ -60,6 +61,12 @@ export const boardRoute = createRoute({
   getParentRoute: () => protectedLayoutRoute,
   path: 'board',
   component: KanbanBoard,
+})
+
+export const historialRoute = createRoute({
+  getParentRoute: () => protectedLayoutRoute,
+  path: 'historial',
+  component: Historial,
 })
 
 // Ruta protegida: home (fallback)
