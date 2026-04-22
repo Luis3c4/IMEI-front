@@ -63,3 +63,12 @@ export interface QuantumRow {
   total: number | null;
   titular: string | null;
 }
+
+export interface HistorialListResponse {
+  success: boolean;
+  data: HistorialInvoice[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
