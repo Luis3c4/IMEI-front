@@ -7,7 +7,7 @@ import ProductForm, {
   type RegistroProductVariant,
 } from "@/components/Registro/ProductForm";
 import { useCreateProduct, useProducts } from "@/services/api-query";
-import { Package, Cpu, Smartphone, Tablet, Laptop, Monitor, Watch, Headphones, Speaker, Tv, MapPin, ChevronLeft, Keyboard, PencilLine} from "lucide-react";
+import { Package, Cpu, Smartphone, Tablet, Laptop, Monitor, Watch, Headphones, Speaker, Tv, MapPin, ChevronLeft, Keyboard, PencilLine, Plug} from "lucide-react";
 //import { toast } from "sonner";
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -22,6 +22,7 @@ const categoryIcons: Record<string, React.ElementType> = {
   AIRTAG: MapPin,
   KEYBOARD: Keyboard,
   "APPLE PENCIL": PencilLine,
+  "POWER ADAPTER": Plug,
 };
 
 interface RegistroCategory {
