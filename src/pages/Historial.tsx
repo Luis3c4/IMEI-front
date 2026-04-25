@@ -1,4 +1,5 @@
-import { Loader2, AlertCircle, TableIcon } from "lucide-react";
+import { useState } from "react";
+import { Loader2, AlertCircle, TableIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -9,6 +10,8 @@ import {
 } from "@/components/ui/table";
 import { useHistorialInvoices } from "@/services/api-query";
 import type { QuantumRow, HistorialInvoice } from "@/types/historyType";
+
+const PAGE_SIZE = 20;
 
 const NULL_DISPLAY = "—";
 
@@ -66,19 +69,23 @@ const formatTotal = (n: number | null) =>
   n === null ? NULL_DISPLAY : `S/. ${n.toFixed(2)}`;
 
 export default function Quantum() {
-  const { data: invoices, isLoading, isError, error } = useHistorialInvoices();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, isError, error } = useHistorialInvoices(page, PAGE_SIZE);
 
-  const rows = invoices ? flattenInvoices(invoices) : [];
+  const invoices = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = data?.total_pages ?? 1;
+  const rows = flattenInvoices(invoices);
 
   return (
     <div className="flex flex-col gap-4 p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center gap-2">
         <TableIcon className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-semibold tracking-tight">Quantum</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Historial</h1>
         {!isLoading && !isError && (
           <span className="ml-auto text-xs text-muted-foreground">
-            {rows.length} {rows.length === 1 ? "fila" : "filas"}
+            {total} {total === 1 ? "registro" : "registros"}
           </span>
         )}
       </div>
@@ -152,6 +159,60 @@ export default function Quantum() {
               )}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!isLoading && !isError && totalPages > 1 && (
+        <div className="flex items-center justify-between px-1">
+          <p className="text-xs text-muted-foreground">
+            Página <span className="font-medium text-foreground">{page}</span> de{" "}
+            <span className="font-medium text-foreground">{totalPages}</span>
+            {" · "}
+            <span className="font-medium text-foreground">{total}</span> facturas
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+              .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, idx) =>
+                p === "..." ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-xs text-muted-foreground">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p as number)}
+                    className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border text-xs font-medium transition-colors ${
+                      page === p
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>

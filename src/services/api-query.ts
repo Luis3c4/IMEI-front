@@ -8,7 +8,7 @@ import type { Product as HierarchicalProduct, ProductHierarchyResponse } from ".
 import type { CustomerListResponse } from "../types/clientesType";
 import { supabase } from "../lib/supabase";
 import type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants } from "../types/ordersType";
-import type { HistorialInvoice } from "../types/historyType";
+import type { HistorialListResponse } from "../types/historyType";
 
 export type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants };
 // ============= Query Keys =============
@@ -22,7 +22,7 @@ export const queryKeys = {
   customers: (userId?: string, search?: string, page?: number, pageSize?: number) => ["customers", userId, search, page, pageSize] as const,
   macbookVariants: (model: string) => ["macbookVariants", model] as const,
   customerInvoices: (customerId: number) => ["customerInvoices", customerId] as const,
-  historial: ["historial"] as const,
+  historial: (page: number, pageSize: number) => ["historial", page, pageSize] as const,
 };
 
 export interface CustomerInvoice {
@@ -306,11 +306,15 @@ class ApiServiceClass {
     return response.json();
   }
 
-  async getHistorialInvoices(): Promise<HistorialInvoice[]> {
+  async getHistorialInvoices(page = 1, pageSize = 20): Promise<HistorialListResponse> {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
 
-    const response = await fetch(`${API_URL}/api/historial`, {
+    const url = new URL(`${API_URL}/api/historial`);
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("page_size", String(pageSize));
+
+    const response = await fetch(url.toString(), {
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -322,8 +326,7 @@ class ApiServiceClass {
       throw new Error(error.detail || "Error al obtener historial");
     }
 
-    const payload = await response.json();
-    return (payload.data ?? []) as HistorialInvoice[];
+    return response.json() as Promise<HistorialListResponse>;
   }
 }
 
@@ -663,11 +666,13 @@ export { apiService as IMEIAPIService };
 // ============= Historial (Quantum) =============
 
 export function useHistorialInvoices(
-  options?: Omit<UseQueryOptions<HistorialInvoice[]>, "queryKey" | "queryFn">
+  page = 1,
+  pageSize = 20,
+  options?: Omit<UseQueryOptions<HistorialListResponse>, "queryKey" | "queryFn">
 ) {
   return useQuery({
-    queryKey: queryKeys.historial,
-    queryFn: () => apiService.getHistorialInvoices(),
+    queryKey: queryKeys.historial(page, pageSize),
+    queryFn: () => apiService.getHistorialInvoices(page, pageSize),
     staleTime: 30_000,
     ...options,
   });
