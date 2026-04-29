@@ -7,10 +7,10 @@ import type { LastOrderInfo, ServiceResponse, DeviceApiResponse } from "../types
 import type { Product as HierarchicalProduct, ProductHierarchyResponse } from "../types/mockProductsType";
 import type { CustomerListResponse } from "../types/clientesType";
 import { supabase } from "../lib/supabase";
-import type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants } from "../types/ordersType";
+import type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants, AppleWatchVariants } from "../types/ordersType";
 import type { HistorialListResponse } from "../types/historyType";
 
-export type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants };
+export type { KanbanPhase, Order, OrderProduct, CreateOrderPayload, MacbookVariants, AppleWatchVariants };
 // ============= Query Keys =============
 export const queryKeys = {
   balance: ["balance"] as const,
@@ -21,6 +21,7 @@ export const queryKeys = {
   dni: (dniNumber: string) => ["dni", dniNumber] as const,
   customers: (userId?: string, search?: string, page?: number, pageSize?: number) => ["customers", userId, search, page, pageSize] as const,
   macbookVariants: (model: string) => ["macbookVariants", model] as const,
+  appleWatchVariants: (model: string) => ["appleWatchVariants", model] as const,
   customerInvoices: (customerId: number) => ["customerInvoices", customerId] as const,
   historial: (page: number, pageSize: number) => ["historial", page, pageSize] as const,
 };
@@ -79,6 +80,17 @@ class ApiServiceClass {
 
     if (!response.ok) {
       throw new Error("Error al obtener variantes MacBook");
+    }
+
+    return response.json();
+  }
+
+  async getAppleWatchVariants(model: string): Promise<AppleWatchVariants> {
+    const params = new URLSearchParams({ model });
+    const response = await fetch(`${API_URL}/api/products/apple-watch-variants?${params}`);
+
+    if (!response.ok) {
+      throw new Error("Error al obtener variantes Apple Watch");
     }
 
     return response.json();
@@ -360,7 +372,21 @@ export function useMacbookVariants(
     ...options,
   });
 }
-
+/**
+ * Hook para obtener las variantes de correa (talla + color) de Apple Watch
+ * desde la configuración del backend.
+ */
+export function useAppleWatchVariants(
+  model: string,
+  options?: Omit<UseQueryOptions<AppleWatchVariants>, "queryKey" | "queryFn">
+) {
+  return useQuery({
+    queryKey: queryKeys.appleWatchVariants(model),
+    queryFn: () => apiService.getAppleWatchVariants(model),
+    staleTime: 1000 * 60 * 60, // 1 hora — las opciones de correa no cambian frecuentemente
+    ...options,
+  });
+}
 /**
  * Hook para obtener productos
  */
