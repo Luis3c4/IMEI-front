@@ -20,6 +20,7 @@ export interface    ProductVariant {
     price:          number;
     capacity:       string | null;
     chip?:          string | null;
+    strap_variant?: string | null;
     product_number?: string;
     product_numbers?: string[];
     product_items:  ProductItem[];
@@ -41,6 +42,7 @@ export interface CreateProductRequest {
     color: string | null;
     capacity: string | null;
     chip?: string | null;
+    strap_variant?: string | null;
     serial_number: string;
     product_number: string;
 }

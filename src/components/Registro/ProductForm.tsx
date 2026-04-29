@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Smartphone, Laptop, Watch, Headphones, Tv, MapPin, Speaker, Tablet, Info, Plus, X } from "lucide-react";
-import { useMacbookVariants } from "@/services/api-query";
+import { useMacbookVariants, useAppleWatchVariants } from "@/services/api-query";
 
 export const NO_COLOR_LABEL = "SIN COLOR";
 export const NO_CAPACITY_LABEL = "SIN CAPACIDAD";
@@ -23,6 +23,7 @@ export interface RegistroFormData {
   color: string | null;
   capacity: string | null;
   chip: string | null;
+  strapVariant: string | null;
   serialNumber: string;
   partNumber: string;
 }
@@ -67,15 +68,26 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
   const [addingChip, setAddingChip] = useState(false);
   const [chipInput, setChipInput] = useState("");
 
+  // Strap variant state (Apple Watch only)
+  const [strapSize, setStrapSize] = useState("");
+  const [strapColor, setStrapColor] = useState("");
+
   const colorInputRef = useRef<HTMLInputElement>(null);
   const capacityInputRef = useRef<HTMLInputElement>(null);
   const chipInputRef = useRef<HTMLInputElement>(null);
 
   // Whether this product requires a chip selection
   const isMac = product.name.toUpperCase().includes("MAC");
+  const isAppleWatch = product.name.toUpperCase().includes("APPLE WATCH");
 
   // Fetch authoritative capacities + chips from the backend pricing config
   const { data: macbookVariants } = useMacbookVariants(product.name, { enabled: isMac });
+
+  // Fetch strap variants for Apple Watch
+  const { data: appleWatchVariants } = useAppleWatchVariants(product.name, { enabled: isAppleWatch });
+
+  const strapSizes = appleWatchVariants?.strap_sizes ?? { SM: "Small/Medium", ML: "Medium/Large" };
+  const strapColors = appleWatchVariants?.strap_colors ?? { LB: "Light Blush", BK: "Black" };
 
   const allColors = [...product.colors, ...extraColors];
 
@@ -110,6 +122,13 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
     if (chip && availableChips.length > 0 && !availableChips.includes(chip)) {
       setChip("");
     }
+  }, [selectedCapacity]);
+
+  // Auto-reset strap selections when capacity changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setStrapSize("");
+    setStrapColor("");
   }, [selectedCapacity]);
 
   const confirmAddColor = () => {
@@ -158,10 +177,12 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
   const normalizedColor = selectedColor === NO_COLOR_LABEL ? null : selectedColor || null;
   const normalizedCapacity = selectedCapacity === NO_CAPACITY_LABEL ? null : selectedCapacity || null;
   const normalizedChip = selectedChip || null;
+  const strapVariant = strapSize && strapColor ? `${strapSize}/${strapColor}` : null;
 
   const handleSubmit = async () => {
     if (!selectedColor || !selectedCapacity || !serialNumber || !partNumber) return;
     if (isMac && !selectedChip) return;
+    if (isAppleWatch && (!strapSize || !strapColor)) return;
 
     setSubmitError(null);
     const fullPartNumber = partNumber.endsWith("/A") ? partNumber : `${partNumber}/A`;
@@ -170,6 +191,7 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
       color: normalizedColor,
       capacity: normalizedCapacity,
       chip: isMac ? normalizedChip : null,
+      strapVariant: isAppleWatch ? strapVariant : null,
       serialNumber,
       partNumber: fullPartNumber,
     });
@@ -185,6 +207,8 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
       setColor("");
       setCapacity("");
       setChip("");
+      setStrapSize("");
+      setStrapColor("");
       setSerialNumber("");
       setPartNumber("");
       setExtraColors([]);
@@ -198,6 +222,7 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
     selectedColor &&
     selectedCapacity &&
     (!isMac || selectedChip) &&
+    (!isAppleWatch || (strapSize && strapColor)) &&
     serialNumber &&
     partNumber &&
     !registered &&
@@ -336,6 +361,59 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
         </div>
       </div>
 
+      {/* Talla y Color de Correa — solo para Apple Watch: oculto hasta elegir tamaño */}
+      {isAppleWatch && !selectedCapacity && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Info className="h-3.5 w-3.5 shrink-0" />
+          <span>Selecciona un tamaño para ver las opciones de correa</span>
+        </div>
+      )}
+      {isAppleWatch && selectedCapacity && (
+        <>
+          {/* Talla de correa */}
+          <div className="space-y-2.5">
+            <label className="text-[0.6875rem] font-bold uppercase tracking-widest text-category-label">
+              Talla Correa
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(strapSizes).map(([code, label]) => (
+                <button
+                  key={code}
+                  onClick={() => setStrapSize(code)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+                    strapSize === code ? "chip-active" : "chip-idle"
+                  }`}
+                >
+                  {code}
+                  <span className="ml-1 opacity-60">· {label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color de correa */}
+          <div className="space-y-2.5">
+            <label className="text-[0.6875rem] font-bold uppercase tracking-widest text-category-label">
+              Color Correa
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(strapColors).map(([code, label]) => (
+                <button
+                  key={code}
+                  onClick={() => setStrapColor(code)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+                    strapColor === code ? "chip-active" : "chip-idle"
+                  }`}
+                >
+                  {code}
+                  <span className="ml-1 opacity-60">· {label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Chip — solo para Mac/MacBook: oculto hasta elegir capacidad */}
       {isMac && !selectedCapacity && (
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -439,13 +517,18 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
       </div>
 
       {/* Selection Summary */}
-      {(selectedColor || selectedCapacity || (isMac && selectedChip)) && (
+      {(selectedColor || selectedCapacity || (isMac && selectedChip) || (isAppleWatch && strapVariant)) && (
         <div className="animate-fade-in rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-          {normalizedColor === null && normalizedCapacity === null && !selectedChip ? (
+          {normalizedColor === null && normalizedCapacity === null && !selectedChip && !strapVariant ? (
             <span className="font-medium text-foreground">Sin capacidad y sin color</span>
           ) : (
             <span className="font-medium text-foreground">
-              {[selectedColor, selectedCapacity, isMac && selectedChip ? selectedChip : null]
+              {[
+                selectedColor,
+                selectedCapacity,
+                isMac && selectedChip ? selectedChip : null,
+                isAppleWatch && strapVariant ? strapVariant : null,
+              ]
                 .filter(Boolean)
                 .join(" · ")}
             </span>

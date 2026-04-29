@@ -36,3 +36,8 @@ export interface MacbookVariants {
   capacities: string[];
   chips_by_capacity: Record<string, string[]>;
 }
+
+export interface AppleWatchVariants {
+  strap_sizes: Record<string, string>;
+  strap_colors: Record<string, string>;
+}

@@ -106,6 +106,7 @@ const Index = () => {
         color: data.color,
         capacity: data.capacity,
         chip: data.chip,
+        strap_variant: data.strapVariant,
         serial_number: data.serialNumber,
         product_number: data.partNumber,
       });
