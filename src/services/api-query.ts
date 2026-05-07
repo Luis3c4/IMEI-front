@@ -703,3 +703,54 @@ export function useHistorialInvoices(
     ...options,
   });
 }
+
+// ============= Transfer OCR =============
+
+export interface TransferOCRResult {
+  monto: string | null;
+  numero_operacion: string | null;
+  banco: string | null;
+  raw_text: string;
+  fecha_transferencia: string | null;
+}
+
+export interface TransferOCRResponse {
+  success: boolean;
+  data: TransferOCRResult | null;
+  error?: string;
+}
+
+async function scanTransfer(file: File): Promise<TransferOCRResponse> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error("No hay sesión activa. Por favor, inicia sesión.");
+  }
+
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const response = await fetch(`${API_URL}/api/transfers/ocr`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error?.detail || error?.error || "Error al procesar la imagen");
+  }
+
+  return response.json();
+}
+
+export function useTransferOCR(
+  options?: UseMutationOptions<TransferOCRResponse, Error, File>
+) {
+  return useMutation<TransferOCRResponse, Error, File>({
+    mutationFn: scanTransfer,
+    ...options,
+  });
+}
+
