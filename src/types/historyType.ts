@@ -30,15 +30,21 @@ export interface HistorialCustomer {
   phone: string | null;
 }
 
-export interface HistorialInvoice {
-  id: number;
-  invoice_date: string | null;
-  shipping_agency: string | null;
-  shipping_department: string | null;
-  shipping_province: string | null;
+export interface HistorialPaymentInfo {
   bank_name: string | null;
   payment_total: number | null;
   payment_holder: string | null;
+  shipping_agency: string | null;
+  shipping_department: string | null;
+  shipping_province: string | null;
+  ocr_numero_operacion: string | null;
+  ocr_fecha_transferencia: string | null;
+}
+
+export interface HistorialInvoice {
+  id: number;
+  invoice_date: string | null;
+  invoice_payment_info: HistorialPaymentInfo | null;
   customers: HistorialCustomer | null;
   invoice_products: HistorialInvoiceProduct[];
 }

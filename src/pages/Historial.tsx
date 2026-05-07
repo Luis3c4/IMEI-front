@@ -20,18 +20,19 @@ function flattenInvoices(invoices: HistorialInvoice[]): QuantumRow[] {
 
   for (const inv of invoices) {
     const customer = inv.customers;
+    const pi = inv.invoice_payment_info;
     const baseRow = {
       invoiceId: inv.id,
-      dpto: inv.shipping_department ?? null,
-      provincia: inv.shipping_province ?? null,
-      agencia: inv.shipping_agency ?? null,
+      dpto: pi?.shipping_department ?? null,
+      provincia: pi?.shipping_province ?? null,
+      agencia: pi?.shipping_agency ?? null,
       dni: customer?.dni ?? null,
       cliente: customer?.name ?? null,
       telefono: customer?.phone ?? null,
       fechaVenta: inv.invoice_date ?? null,
-      banco: inv.bank_name ?? null,
-      total: inv.payment_total ?? null,
-      titular: inv.payment_holder ?? null,
+      banco: pi?.bank_name ?? null,
+      total: pi?.payment_total ?? null,
+      titular: pi?.payment_holder ?? null,
     };
 
     if (!inv.invoice_products || inv.invoice_products.length === 0) {

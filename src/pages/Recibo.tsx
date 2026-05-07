@@ -39,6 +39,8 @@ const Factura = () => {
     banco: "",
     total: "",
     titular: "",
+    numero_operacion: "",
+    fecha_transferencia: "",
   });
   const handleAddProduct = (product: SelectedProduct) => {
     setSelectedProducts((prev) => [...prev, { ...product, quantity: 1 }]);
@@ -87,6 +89,8 @@ const Factura = () => {
         banco: paymentData.banco?.trim() || null,
         titular: paymentData.titular?.trim() || null,
         total: paymentData.total?.trim() || null,
+        numero_operacion: paymentData.numero_operacion?.trim() || null,
+        fecha_transferencia: paymentData.fecha_transferencia?.trim() || null,
       },
       products: selectedProducts.map((product) => ({
         product_id: product.baseProductId, // FK a products.id (REQUERIDO)
