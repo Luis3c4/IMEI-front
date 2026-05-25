@@ -86,7 +86,7 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
   // Fetch strap variants for Apple Watch
   const { data: appleWatchVariants } = useAppleWatchVariants(product.name, { enabled: isAppleWatch });
 
-  const strapSizes = appleWatchVariants?.strap_sizes ?? { SM: "Small/Medium", ML: "Medium/Large" };
+  const strapSizes = appleWatchVariants?.strap_sizes ?? { SM: "Small/Medium", ML: "Medium/Large", OS: "One Size" };
   const strapColors = appleWatchVariants?.strap_colors ?? { LB: "Light Blush", BK: "Black" };
 
   const allColors = [...product.colors, ...extraColors];
