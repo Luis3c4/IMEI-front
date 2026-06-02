@@ -40,7 +40,8 @@ class ApiServiceClass {
   async checkDevice(
     code: string,
     serviceId: string,
-    productNumber?: string
+    productNumber?: string,
+    saveToSupabase = true
   ): Promise<DeviceApiResponse> {
     const response = await fetch(`${API_URL}/api/devices/consultar`, {
       method: "POST",
@@ -49,6 +50,7 @@ class ApiServiceClass {
         input_value: code,
         service_id: serviceId,
         formato: "beta",
+        save_to_supabase: saveToSupabase,
         ...(productNumber?.trim()
           ? { product_number: productNumber.trim() }
           : {}),
@@ -484,12 +486,12 @@ export function useCheckDevice(
   options?: UseMutationOptions<
     DeviceApiResponse,
     Error,
-    { code: string; serviceId: string; productNumber?: string }
+    { code: string; serviceId: string; productNumber?: string; saveToSupabase?: boolean }
   >
 ) {
   return useMutation({
-    mutationFn: ({ code, serviceId, productNumber }) =>
-      apiService.checkDevice(code, serviceId, productNumber),
+    mutationFn: ({ code, serviceId, productNumber, saveToSupabase }) =>
+      apiService.checkDevice(code, serviceId, productNumber, saveToSupabase),
     ...options,
   });
 }

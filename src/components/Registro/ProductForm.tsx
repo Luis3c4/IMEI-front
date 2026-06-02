@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Smartphone, Laptop, Watch, Headphones, Tv, MapPin, Speaker, Tablet, Info, Plus, X } from "lucide-react";
-import { useMacbookVariants, useAppleWatchVariants } from "@/services/api-query";
+import { Check, Smartphone, Laptop, Watch, Headphones, Tv, MapPin, Speaker, Tablet, Info, Plus, X, Search, Loader2 } from "lucide-react";
+import { useMacbookVariants, useAppleWatchVariants, useCheckDevice } from "@/services/api-query";
+import type { DeviceInfo } from "@/types";
 
 export const NO_COLOR_LABEL = "SIN COLOR";
 export const NO_CAPACITY_LABEL = "SIN CAPACIDAD";
@@ -26,6 +27,8 @@ export interface RegistroFormData {
   strapVariant: string | null;
   serialNumber: string;
   partNumber: string;
+  imei1: string | null;
+  imei2: string | null;
 }
 
 const getCategoryIcon = (name: string) => {
@@ -54,6 +57,11 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
   const [partNumber, setPartNumber] = useState("");
   const [registered, setRegistered] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [lookupResult, setLookupResult] = useState<DeviceInfo | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [imei1, setImei1] = useState("");
+  const [imei2, setImei2] = useState("");
+  const [showImeiFields, setShowImeiFields] = useState(false);
 
   // Extra variants added inline
   const [extraColors, setExtraColors] = useState<string[]>([]);
@@ -79,6 +87,32 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
   // Whether this product requires a chip selection
   const isMac = product.name.toUpperCase().includes("MAC");
   const isAppleWatch = product.name.toUpperCase().includes("APPLE WATCH");
+  const isIPhoneFamily = product.name.toUpperCase().includes("IPHONE");
+  const imeiRegex = /^\d{15}$/;
+
+  const { mutateAsync: runSerialLookup, isPending: isLookingUp } = useCheckDevice({
+    onSuccess: (response) => {
+      setLookupResult(response.data);
+      setLookupError(null);
+
+      const parsedImei1 = (response.data.IMEI || "").trim();
+      const parsedImei2 = (response.data.IMEI2 || "").trim();
+      setImei1(parsedImei1);
+      setImei2(parsedImei2);
+      setShowImeiFields(true);
+
+      if (!imeiRegex.test(parsedImei1) || !imeiRegex.test(parsedImei2)) {
+        setLookupError("La consulta no devolvió IMEI1 e IMEI2 válidos de 15 dígitos");
+      }
+    },
+    onError: (error) => {
+      setLookupResult(null);
+      setLookupError(error.message || "No se pudo consultar el serial");
+      setImei1("");
+      setImei2("");
+      setShowImeiFields(true);
+    },
+  });
 
   // Fetch authoritative capacities + chips from the backend pricing config
   const { data: macbookVariants } = useMacbookVariants(product.name, { enabled: isMac });
@@ -183,6 +217,7 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
     if (!selectedColor || !selectedCapacity || !serialNumber || !partNumber) return;
     if (isMac && !selectedChip) return;
     if (isAppleWatch && (!strapSize || !strapColor)) return;
+    if (isIPhoneFamily && (!imeiRegex.test(imei1) || !imeiRegex.test(imei2))) return;
 
     setSubmitError(null);
     const fullPartNumber = partNumber.endsWith("/A") ? partNumber : `${partNumber}/A`;
@@ -194,6 +229,8 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
       strapVariant: isAppleWatch ? strapVariant : null,
       serialNumber,
       partNumber: fullPartNumber,
+      imei1: isIPhoneFamily ? imei1 : null,
+      imei2: isIPhoneFamily ? imei2 : null,
     });
 
     if (!success) {
@@ -211,6 +248,9 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
       setStrapColor("");
       setSerialNumber("");
       setPartNumber("");
+      setImei1("");
+      setImei2("");
+      setShowImeiFields(false);
       setExtraColors([]);
       setExtraCapacities([]);
       setExtraChips([]);
@@ -218,11 +258,25 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
     }, 2000);
   };
 
+  const handleSerialLookup = async () => {
+    if (!isIPhoneFamily || !serialNumber.trim()) {
+      return;
+    }
+
+    setLookupError(null);
+    setLookupResult(null);
+    setImei1("");
+    setImei2("");
+    setShowImeiFields(true);
+    await runSerialLookup({ code: serialNumber.trim(), serviceId: "12", saveToSupabase: false }).catch(() => {});
+  };
+
   const canSubmit =
     selectedColor &&
     selectedCapacity &&
     (!isMac || selectedChip) &&
     (!isAppleWatch || (strapSize && strapColor)) &&
+    (!isIPhoneFamily || (imeiRegex.test(imei1) && imeiRegex.test(imei2))) &&
     serialNumber &&
     partNumber &&
     !registered &&
@@ -486,13 +540,94 @@ const ProductForm = ({ product, onRegister, onSuccess, isSubmitting = false }: P
         <label className="text-[0.6875rem] font-bold uppercase tracking-widest text-category-label">
           Serial Number
         </label>
-        <input
-          type="text"
-          value={serialNumber}
-          onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
-          placeholder="Ej: C39X1234ABCD"
-          className="w-full rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            value={serialNumber}
+            onChange={(e) => {
+              setSerialNumber(e.target.value.toUpperCase());
+              if (lookupResult || lookupError) {
+                setLookupResult(null);
+                setLookupError(null);
+              }
+              if (imei1 || imei2 || showImeiFields) {
+                setImei1("");
+                setImei2("");
+                setShowImeiFields(false);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && isIPhoneFamily && !isLookingUp && serialNumber.trim()) {
+                void handleSerialLookup();
+              }
+            }}
+            placeholder="Ej: C39X1234ABCD"
+            className={`w-full rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent ${isIPhoneFamily ? "pr-24" : ""}`}
+          />
+          {isIPhoneFamily && (
+            <button
+              type="button"
+              onClick={handleSerialLookup}
+              disabled={!serialNumber.trim() || isLookingUp}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1.5 text-[0.6875rem] font-semibold text-accent-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isLookingUp ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Buscando
+                </>
+              ) : (
+                <>
+                  <Search className="h-3 w-3" />
+                  Buscar
+                </>
+              )}
+            </button>
+          )}
+        </div>
+        {isIPhoneFamily && lookupError && (
+          <p className="text-xs text-destructive">{lookupError}</p>
+        )}
+        {isIPhoneFamily && lookupResult && (
+          <div className="rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground">{lookupResult.Model_Description || "iPhone"}</p>
+            <p className="mt-0.5">Garantía: {lookupResult.Warranty_Status || "No disponible"}</p>
+            {lookupResult.Purchase_Country && (
+              <p className="mt-0.5">País: {lookupResult.Purchase_Country}</p>
+            )}
+          </div>
+        )}
+        {isIPhoneFamily && showImeiFields && (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-[0.625rem] font-bold uppercase tracking-widest text-category-label">
+                IMEI 1
+              </label>
+              <input
+                type="text"
+                value={imei1}
+                readOnly
+                placeholder="Se completa al buscar"
+                className="w-full rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[0.625rem] font-bold uppercase tracking-widest text-category-label">
+                IMEI 2
+              </label>
+              <input
+                type="text"
+                value={imei2}
+                readOnly
+                placeholder="Se completa al buscar"
+                className="w-full rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+            </div>
+          </div>
+        )}
+        {isIPhoneFamily && showImeiFields && (!imeiRegex.test(imei1) || !imeiRegex.test(imei2)) && !isLookingUp && (
+          <p className="text-xs text-destructive">IMEI1 e IMEI2 son obligatorios y deben tener 15 dígitos numéricos.</p>
+        )}
       </div>
 
       {/* Part Number */}
