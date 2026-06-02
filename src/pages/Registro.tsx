@@ -109,6 +109,8 @@ const Index = () => {
         strap_variant: data.strapVariant,
         serial_number: data.serialNumber,
         product_number: data.partNumber,
+        imei1: data.imei1,
+        imei2: data.imei2,
       });
 
       return true;

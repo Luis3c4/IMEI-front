@@ -45,6 +45,8 @@ export interface CreateProductRequest {
     strap_variant?: string | null;
     serial_number: string;
     product_number: string;
+    imei1?: string | null;
+    imei2?: string | null;
 }
 
 export interface CreateProductResponse {
