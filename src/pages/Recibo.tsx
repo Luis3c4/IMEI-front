@@ -46,6 +46,7 @@ const createInitialPaymentData = (): PaymentData => ({
 
 const Factura = () => {
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
+  const [includeImei, setIncludeImei] = useState(true);
   const [customerData, setCustomerData] = useState<DniResult | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
@@ -120,6 +121,7 @@ const Factura = () => {
         numero_operacion: paymentData.numero_operacion?.trim() || null,
         fecha_transferencia: paymentData.fecha_transferencia?.trim() || null,
       },
+      include_imei: includeImei,
       products: selectedProducts.map((product) => ({
         product_id: product.baseProductId, // FK a products.id (REQUERIDO)
         variant_id: product.id, // FK a product_variants.id (opcional)
@@ -170,6 +172,7 @@ const Factura = () => {
 
       // Reiniciar el formulario después de generar el PDF correctamente.
       setSelectedProducts([]);
+      setIncludeImei(true);
       setCustomerData(null);
       setPaymentData(createInitialPaymentData());
       setInvoiceDate(new Date());
@@ -187,6 +190,10 @@ const Factura = () => {
   };
 
   const canGeneratePDF = selectedProducts.length > 0 && customerData !== null;
+  const hasIPhone = selectedProducts.some((product) =>
+    product.category.toLowerCase().includes("iphone") ||
+    product.baseProductName.toLowerCase().includes("iphone")
+  );
   const isProcessing = isGeneratingPdf || isTogglingStatus || isRefreshingProducts;
 
   return (
@@ -296,6 +303,20 @@ const Factura = () => {
                 products={selectedProducts}
                 onRemoveProduct={handleRemoveProduct}
               />
+              <label
+                className={`flex items-center gap-2 text-sm ${
+                  hasIPhone ? "text-foreground" : "text-muted-foreground opacity-40"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={includeImei}
+                  disabled={!hasIPhone}
+                  onChange={(event) => setIncludeImei(event.target.checked)}
+                  className="h-4 w-4 accent-primary disabled:cursor-not-allowed"
+                />
+                <span>Generar IMEI</span>
+              </label>
             </div>
 
             {/* Generate PDF Button */}
