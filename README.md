@@ -1,73 +1,90 @@
-# React + TypeScript + Vite
+# IMEI Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interfaz web para consultar dispositivos por IMEI o serial. Está construida con React, TypeScript y Vite.
 
-Currently, two official plugins are available:
+## Cómo levantar el proyecto
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Requisitos
 
-## React Compiler
+- Node.js 20.19+ o 22.12+.
+- pnpm para instalar las dependencias y ejecutar los comandos.
+- Variables de entorno de Supabase para que la aplicación pueda iniciar.
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+### 1. Instalar dependencias
 
-## Expanding the ESLint configuration
+Desde esta carpeta (`IMEI-front`), instala las dependencias definidas en `pnpm-lock.yaml`:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Si no tienes pnpm instalado globalmente, puedes ejecutarlo mediante Corepack, incluido con versiones actuales de Node.js:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+corepack pnpm install
 ```
+
+Corepack solo descarga/selecciona pnpm y ejecuta el comando; no es requisito de Vite ni del servidor de desarrollo.
+
+El archivo `pnpm-workspace.yaml` no configura un monorepo en este proyecto. Declara explícitamente los paquetes cuyas dependencias necesitan scripts de instalación (`@swc/core`, `esbuild` y `sharp`), para que pnpm moderno pueda instalarlas. Sin esa autorización, pnpm puede bloquear dichos scripts y fallar la compilación.
+
+### 2. Configurar el entorno local
+
+Desde `IMEI-front`, copia el archivo de ejemplo y reemplaza los valores de Supabase por los de tu proyecto:
+
+```bash
+cp .env.example .env.local
+```
+
+`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` son obligatorias. La aplicación lanza un error al iniciar si faltan. `VITE_API_URL` es opcional; si no se define, el frontend usa `http://localhost:8000`.
+
+No uses una clave secreta de Supabase en el frontend. Usa únicamente la clave publicable/anon correspondiente a la configuración del proyecto.
+
+### 3. Iniciar el frontend
+
+Desde `IMEI-front`:
+
+```bash
+pnpm dev
+```
+
+Vite muestra la URL local en la terminal, normalmente <http://localhost:5173>. Mantén esa terminal abierta mientras desarrollas; para detener el servidor, usa `Ctrl+C`.
+
+Si no tienes pnpm instalado globalmente, también puedes iniciar Vite con `corepack pnpm dev`.
+
+Para permitir conexiones desde otros dispositivos de la red local:
+
+```bash
+corepack pnpm dev -- --host 0.0.0.0
+```
+
+### 4. Iniciar el backend
+
+Las consultas al servicio requieren también el backend FastAPI. En otra terminal, desde la carpeta `IMEI`:
+
+```bash
+cd ../IMEI
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+El backend debe estar disponible en <http://localhost:8000>. Su configuración y credenciales requeridas están descritas en [IMEI/README.md](../IMEI/README.md). Si usas otro host o puerto, establece `VITE_API_URL` en `.env.local` y reinicia Vite.
+
+## Comandos disponibles
+
+Ejecuta estos comandos desde `IMEI-front`:
+
+| Comando | Descripción |
+| --- | --- |
+| `pnpm dev` | Inicia el servidor de desarrollo con recarga en caliente. |
+| `pnpm build` | Comprueba TypeScript y genera la versión de producción en `dist/`. |
+| `pnpm preview` | Sirve localmente la compilación de producción. |
+| `pnpm lint` | Ejecuta ESLint. |
+
+## Solución de problemas
+
+- **Error de variables de Supabase:** verifica que `.env.local` esté dentro de `IMEI-front`, que los nombres de las variables sean exactos y reinicia el servidor.
+- **No conecta con la API:** confirma que el backend esté ejecutándose en `http://localhost:8000` o ajusta `VITE_API_URL`.
+- **La cámara no funciona:** permite el acceso a la cámara. En desarrollo, abre el frontend desde `localhost`; los navegadores normalmente requieren HTTPS para usar la cámara en otros hosts.

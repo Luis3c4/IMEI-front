@@ -24,24 +24,40 @@ interface DniResult {
   phone?: string;
 }
 
+const createInitialPaymentData = (): PaymentData => ({
+  tipo: "FINAL",
+  departamento: "",
+  provincia: "",
+  provinciaAdicional: "",
+  agencia: "OFICINA",
+  olva: "",
+  frank: "",
+  vendedor: "",
+  numero: "",
+  precioFinal: "",
+  envio: "",
+  accesorio: "",
+  banco: "",
+  total: "",
+  titular: "",
+  numero_operacion: "",
+  fecha_transferencia: "",
+});
+
 const Factura = () => {
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
   const [customerData, setCustomerData] = useState<DniResult | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
+  const [isRefreshingProducts, setIsRefreshingProducts] = useState(false);
+  const [generationNotice, setGenerationNotice] = useState<{
+    message: string;
+    type: "error" | "warning";
+  } | null>(null);
   const { mutateAsync: generateInvoiceTestPdf, isPending: isGeneratingPdf } = useInvoiceTestPdfPreview();
   const { mutateAsync: bulkToggleSold, isPending: isTogglingStatus } = useBulkToggleSoldItems();
   const { refetch: refetchProducts } = useProducts();
-  const [paymentData, setPaymentData] = useState<PaymentData>({
-    departamento: "",
-    provincia: "",
-    agencia: "",
-    banco: "",
-    total: "",
-    titular: "",
-    numero_operacion: "",
-    fecha_transferencia: "",
-  });
+  const [paymentData, setPaymentData] = useState<PaymentData>(createInitialPaymentData);
   const handleAddProduct = (product: SelectedProduct) => {
     setSelectedProducts((prev) => [...prev, { ...product, quantity: 1 }]);
   };
@@ -59,6 +75,8 @@ const Factura = () => {
   };
 
   const handleGeneratePDF = async () => {
+    setGenerationNotice(null);
+
     // Extraer los IDs de los product_items de los productos seleccionados
     const itemIds: number[] = [];
 
@@ -72,6 +90,7 @@ const Factura = () => {
 
     // Formatear la fecha seleccionada al formato requerido por el backend
     const formattedDate = format(invoiceDate, "MMMM dd, yyyy");
+    const optionalAmount = (value: string) => value.trim() ? Number(value) : null;
 
     // Crear el body con la estructura de Invoice
     const invoiceBody = {
@@ -83,9 +102,18 @@ const Factura = () => {
         phone: customerData?.phone || ""
       },
       payment_info: {
+        tipo: paymentData.tipo,
         agencia: paymentData.agencia?.trim() || null,
         departamento: paymentData.departamento?.trim() || null,
         provincia: paymentData.provincia?.trim() || null,
+        provincia_adicional: paymentData.provinciaAdicional?.trim() || null,
+        olva: optionalAmount(paymentData.olva),
+        frank: optionalAmount(paymentData.frank),
+        vendedor: paymentData.vendedor || null,
+        numero: optionalAmount(paymentData.numero),
+        precio_final: optionalAmount(paymentData.precioFinal),
+        envio: optionalAmount(paymentData.envio),
+        accesorio: optionalAmount(paymentData.accesorio),
         banco: paymentData.banco?.trim() || null,
         titular: paymentData.titular?.trim() || null,
         total: paymentData.total?.trim() || null,
@@ -118,26 +146,48 @@ const Factura = () => {
       }
 
       // Luego generar el PDF
-      const pdfBlob = await generateInvoiceTestPdf(invoiceBody);
-      const url = URL.createObjectURL(pdfBlob);
+      const pdfResult = await generateInvoiceTestPdf(invoiceBody);
+      const url = URL.createObjectURL(pdfResult.blob);
       window.open(url, "_blank");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
-
-      // Limpiar la selección después de generar el PDF exitosamente
-      setSelectedProducts([]);
+      const warnings: string[] = [];
+      if (pdfResult.googleSheetSaved === false) {
+        warnings.push(
+          "El PDF se generó, pero no se pudo guardar la fila en Google Sheets. Revisa los permisos del Sheet."
+        );
+      }
 
       // Refetch de productos para actualizar la lista con los nuevos estados
-      await refetchProducts();
+      setIsRefreshingProducts(true);
+      try {
+        await refetchProducts();
+      } catch (refreshError) {
+        console.error("El PDF se generó, pero no se pudo actualizar el inventario:", refreshError);
+        warnings.push("No se pudo actualizar el inventario después de generar el PDF.");
+      } finally {
+        setIsRefreshingProducts(false);
+      }
 
-      // Resetear el ProductSelector a los steps iniciales
-      setResetKey(prev => prev + 1);
+      // Reiniciar el formulario después de generar el PDF correctamente.
+      setSelectedProducts([]);
+      setCustomerData(null);
+      setPaymentData(createInitialPaymentData());
+      setInvoiceDate(new Date());
+      setResetKey((prev) => prev + 1);
+      if (warnings.length > 0) {
+        setGenerationNotice({ type: "warning", message: warnings.join(" ") });
+      }
     } catch (err) {
       console.error("Error en el proceso:", err);
+      setGenerationNotice({
+        type: "error",
+        message: err instanceof Error ? err.message : "No se pudo completar la cotización.",
+      });
     }
   };
 
   const canGeneratePDF = selectedProducts.length > 0 && customerData !== null;
-  const isProcessing = isGeneratingPdf || isTogglingStatus;
+  const isProcessing = isGeneratingPdf || isTogglingStatus || isRefreshingProducts;
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
@@ -192,7 +242,7 @@ const Factura = () => {
                   Consulta por DNI
                 </h3>
               </div>
-              <DniSearch onCustomerDataChange={setCustomerData} />
+              <DniSearch key={resetKey} onCustomerDataChange={setCustomerData} />
             </div>
 
             {/* Product Selector Card */}
@@ -221,7 +271,13 @@ const Factura = () => {
                   Información de pago
                 </h3>
               </div>
-              <PaymentInfo data={paymentData} onChange={setPaymentData} />
+              <PaymentInfo
+                key={resetKey}
+                data={paymentData}
+                onChange={setPaymentData}
+                customerData={customerData}
+                invoiceDate={invoiceDate}
+              />
             </div>
 
             {/* Selected Products Card */}
@@ -253,6 +309,17 @@ const Factura = () => {
               <FileText className="w-5 h-5 mr-2" />
               {isProcessing ? "Procesando..." : "Generar PDF de Cotización"}
             </Button>
+
+            {generationNotice && (
+              <p
+                role="alert"
+                className={`text-sm text-center ${
+                  generationNotice.type === "error" ? "text-destructive" : "text-amber-700"
+                }`}
+              >
+                {generationNotice.message}
+              </p>
+            )}
 
             {!canGeneratePDF && (
               <p className="text-xs text-muted-foreground text-center">

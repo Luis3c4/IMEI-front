@@ -35,6 +35,11 @@ export interface CustomerInvoice {
   created_at: string;
 }
 
+export interface InvoicePdfResult {
+  blob: Blob;
+  googleSheetSaved: boolean | null;
+}
+
 // ============= Funciones de Fetch =============
 class ApiServiceClass {
   async checkDevice(
@@ -192,7 +197,7 @@ class ApiServiceClass {
     }
   }
 
-  async getInvoiceTestPdfPreview(invoiceBody: unknown): Promise<Blob> {
+  async getInvoiceTestPdfPreview(invoiceBody: unknown): Promise<InvoicePdfResult> {
     // Obtener el token JWT de la sesión actual de Supabase
     const { data: { session } } = await supabase.auth.getSession();
     
@@ -218,7 +223,11 @@ class ApiServiceClass {
       throw new Error("Error al generar el PDF");
     }
 
-    return response.blob();
+    const sheetSavedHeader = response.headers.get("X-Google-Sheet-Saved");
+    return {
+      blob: await response.blob(),
+      googleSheetSaved: sheetSavedHeader === null ? null : sheetSavedHeader === "true",
+    };
   }
 
   async searchDni(dniNumber: string): Promise<{
@@ -500,7 +509,7 @@ export function useCheckDevice(
  * Hook para generar/preview de PDF de factura de prueba
  */
 export function useInvoiceTestPdfPreview(
-  options?: UseMutationOptions<Blob, Error, unknown>
+  options?: UseMutationOptions<InvoicePdfResult, Error, unknown>
 ) {
   return useMutation({
     mutationFn: (invoiceBody: unknown) => apiService.getInvoiceTestPdfPreview(invoiceBody),
@@ -755,4 +764,3 @@ export function useTransferOCR(
     ...options,
   });
 }
-
