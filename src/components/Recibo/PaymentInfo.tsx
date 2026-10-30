@@ -2,14 +2,22 @@ import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useEffect } from "react";
 import { ScanLine, Loader2 } from "lucide-react";
 import { useTransferOCR } from "@/services/api-query";
 
 export interface PaymentData {
+    tipo: "FINAL" | "TIENDA";
     departamento: string;
     provincia: string;
+    provinciaAdicional: string;
     agencia: string;
+    olva: string;
+    frank: string;
+    vendedor: "" | "Javi" | "Roger";
+    numero: string;
+    precioFinal: string;
+    envio: string;
+    accesorio: string;
     banco: string;
     total: string;
     titular: string;
@@ -17,24 +25,36 @@ export interface PaymentData {
     fecha_transferencia: string;
 }
 
+interface CustomerData {
+    document_number: string;
+    full_name: string;
+    phone?: string;
+}
+
 interface PaymentInfoProps {
     data: PaymentData;
     onChange: (data: PaymentData) => void;
+    customerData: CustomerData | null;
+    invoiceDate: Date;
 }
 
-export const PaymentInfo = ({ data, onChange }: PaymentInfoProps) => {
+export const PaymentInfo = ({ data, onChange, customerData, invoiceDate }: PaymentInfoProps) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { mutateAsync: scanTransfer, isPending: isScanning } = useTransferOCR();
 
-    // Establecer agencia por defecto a "OFICINA" si está vacía
-    useEffect(() => {
-        if (!data.agencia) {
-            onChange({ ...data, agencia: "OFICINA" });
-        }
-    }, []);
-
     const handleChange = (key: keyof PaymentData, value: string) => {
-        onChange({ ...data, [key]: key !== "total" ? value.toUpperCase() : value });
+        const numericFields: (keyof PaymentData)[] = [
+            "numero",
+            "olva",
+            "frank",
+            "precioFinal",
+            "envio",
+            "accesorio",
+            "total",
+        ];
+        const normalizedValue =
+            numericFields.includes(key) || key === "vendedor" ? value : value.toUpperCase();
+        onChange({ ...data, [key]: normalizedValue });
     };
 
     const handleScanClick = () => {
@@ -97,6 +117,83 @@ export const PaymentInfo = ({ data, onChange }: PaymentInfoProps) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Tipo de atención */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="tipo" className="text-xs text-muted-foreground">
+                        FINAL / TIENDA
+                    </Label>
+                    <select
+                        id="tipo"
+                        value={data.tipo}
+                        onChange={(e) => handleChange("tipo", e.target.value)}
+                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="FINAL">FINAL</option>
+                        <option value="TIENDA">TIENDA</option>
+                    </select>
+                </div>
+
+                {/* Vendedor */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="vendedor" className="text-xs text-muted-foreground">
+                        VEND.
+                    </Label>
+                    <select
+                        id="vendedor"
+                        value={data.vendedor}
+                        onChange={(e) => handleChange("vendedor", e.target.value)}
+                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="">Seleccionar vendedor</option>
+                        <option value="Javi">Javi</option>
+                        <option value="Roger">Roger</option>
+                    </select>
+                </div>
+
+                {/* Datos obtenidos mediante la consulta por DNI */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="cliente-dni" className="text-xs text-muted-foreground">
+                        DNI
+                    </Label>
+                    <Input id="cliente-dni" value={customerData?.document_number ?? ""} readOnly />
+                </div>
+                <div className="space-y-1.5">
+                    <Label htmlFor="cliente-nombre" className="text-xs text-muted-foreground">
+                        CLIENTE
+                    </Label>
+                    <Input id="cliente-nombre" value={customerData?.full_name ?? ""} readOnly />
+                </div>
+                <div className="space-y-1.5">
+                    <Label htmlFor="cliente-telefono" className="text-xs text-muted-foreground">
+                        TELEFONO
+                    </Label>
+                    <Input id="cliente-telefono" value={customerData?.phone ?? ""} readOnly />
+                </div>
+
+                {/* Número y fecha de venta */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="numero" className="text-xs text-muted-foreground">
+                        N°
+                    </Label>
+                    <Input
+                        id="numero"
+                        type="number"
+                        placeholder="0"
+                        value={data.numero}
+                        onChange={(e) => handleChange("numero", e.target.value)}
+                    />
+                </div>
+                <div className="space-y-1.5">
+                    <Label htmlFor="fecha-venta" className="text-xs text-muted-foreground">
+                        FECHA V.
+                    </Label>
+                    <Input
+                        id="fecha-venta"
+                        value={new Intl.DateTimeFormat("es-PE").format(invoiceDate)}
+                        readOnly
+                    />
+                </div>
+
                 {/* Agencia - Select */}
                 <div className="space-y-1.5">
                     <Label htmlFor="agencia" className="text-xs text-muted-foreground">
@@ -159,7 +256,7 @@ export const PaymentInfo = ({ data, onChange }: PaymentInfoProps) => {
                 {isOlva && (
                     <div className="space-y-1.5">
                         <Label htmlFor="departamento" className="text-xs text-muted-foreground">
-                            Departamento
+                            DPTO.
                         </Label>
                         <Input
                             id="departamento"
@@ -175,7 +272,7 @@ export const PaymentInfo = ({ data, onChange }: PaymentInfoProps) => {
                 {isOlva && (
                     <div className="space-y-1.5">
                         <Label htmlFor="provincia" className="text-xs text-muted-foreground">
-                            Provincia
+                            PROVI.
                         </Label>
                         <Input
                             id="provincia"
@@ -187,14 +284,107 @@ export const PaymentInfo = ({ data, onChange }: PaymentInfoProps) => {
                     </div>
                 )}
 
+                {isOlva && (
+                    <div className="space-y-1.5">
+                        <Label htmlFor="provincia-adicional" className="text-xs text-muted-foreground">
+                            PROVI. (segunda)
+                        </Label>
+                        <Input
+                            id="provincia-adicional"
+                            type="text"
+                            placeholder="Ej. Lima"
+                            value={data.provinciaAdicional}
+                            onChange={(e) => handleChange("provinciaAdicional", e.target.value)}
+                        />
+                    </div>
+                )}
+
+                {isOlva && (
+                    <div className="space-y-1.5">
+                        <Label htmlFor="olva" className="text-xs text-muted-foreground">
+                            OLVA
+                        </Label>
+                        <Input
+                            id="olva"
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={data.olva}
+                            onChange={(e) => handleChange("olva", e.target.value)}
+                        />
+                    </div>
+                )}
+
+                {isOlva && (
+                    <div className="space-y-1.5">
+                        <Label htmlFor="frank" className="text-xs text-muted-foreground">
+                            FRANK
+                        </Label>
+                        <Input
+                            id="frank"
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={data.frank}
+                            onChange={(e) => handleChange("frank", e.target.value)}
+                        />
+                    </div>
+                )}
+
+                {/* Precio final */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="precio-final" className="text-xs text-muted-foreground">
+                        PRECIO F.
+                    </Label>
+                    <Input
+                        id="precio-final"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={data.precioFinal}
+                        onChange={(e) => handleChange("precioFinal", e.target.value)}
+                    />
+                </div>
+
+                {isOlva && (
+                    <div className="space-y-1.5">
+                        <Label htmlFor="envio" className="text-xs text-muted-foreground">
+                            ENVIO
+                        </Label>
+                        <Input
+                            id="envio"
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={data.envio}
+                            onChange={(e) => handleChange("envio", e.target.value)}
+                        />
+                    </div>
+                )}
+
+                <div className="space-y-1.5">
+                    <Label htmlFor="accesorio" className="text-xs text-muted-foreground">
+                        ACCES.
+                    </Label>
+                    <Input
+                        id="accesorio"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={data.accesorio}
+                        onChange={(e) => handleChange("accesorio", e.target.value)}
+                    />
+                </div>
+
                 {/* Total */}
                 <div className="space-y-1.5">
                     <Label htmlFor="total" className="text-xs text-muted-foreground">
-                        Total
+                        S/. TOTAL
                     </Label>
                     <Input
                         id="total"
                         type="number"
+                        step="0.01"
                         placeholder="0.00"
                         value={data.total}
                         onChange={(e) => handleChange("total", e.target.value)}
@@ -218,4 +408,3 @@ export const PaymentInfo = ({ data, onChange }: PaymentInfoProps) => {
         </div>
     );
 };
-
