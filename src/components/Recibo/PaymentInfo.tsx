@@ -14,10 +14,12 @@ export interface PaymentData {
     olva: string;
     frank: string;
     vendedor: "" | "Javi" | "Roger";
-    numero: string;
     precioFinal: string;
     envio: string;
     accesorio: string;
+    billeteras: string;
+    transferencia: string;
+    cash: string;
     banco: string;
     total: string;
     titular: string;
@@ -35,21 +37,22 @@ interface PaymentInfoProps {
     data: PaymentData;
     onChange: (data: PaymentData) => void;
     customerData: CustomerData | null;
-    invoiceDate: Date;
 }
 
-export const PaymentInfo = ({ data, onChange, customerData, invoiceDate }: PaymentInfoProps) => {
+export const PaymentInfo = ({ data, onChange, customerData }: PaymentInfoProps) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { mutateAsync: scanTransfer, isPending: isScanning } = useTransferOCR();
 
     const handleChange = (key: keyof PaymentData, value: string) => {
         const numericFields: (keyof PaymentData)[] = [
-            "numero",
             "olva",
             "frank",
             "precioFinal",
             "envio",
             "accesorio",
+            "billeteras",
+            "transferencia",
+            "cash",
             "total",
         ];
         const normalizedValue =
@@ -170,30 +173,6 @@ export const PaymentInfo = ({ data, onChange, customerData, invoiceDate }: Payme
                     <Input id="cliente-telefono" value={customerData?.phone ?? ""} readOnly />
                 </div>
 
-                {/* Número y fecha de venta */}
-                <div className="space-y-1.5">
-                    <Label htmlFor="numero" className="text-xs text-muted-foreground">
-                        N°
-                    </Label>
-                    <Input
-                        id="numero"
-                        type="number"
-                        placeholder="0"
-                        value={data.numero}
-                        onChange={(e) => handleChange("numero", e.target.value)}
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <Label htmlFor="fecha-venta" className="text-xs text-muted-foreground">
-                        FECHA V.
-                    </Label>
-                    <Input
-                        id="fecha-venta"
-                        value={new Intl.DateTimeFormat("es-PE").format(invoiceDate)}
-                        readOnly
-                    />
-                </div>
-
                 {/* Agencia - Select */}
                 <div className="space-y-1.5">
                     <Label htmlFor="agencia" className="text-xs text-muted-foreground">
@@ -208,6 +187,48 @@ export const PaymentInfo = ({ data, onChange, customerData, invoiceDate }: Payme
                         <option value="OFICINA">OFICINA</option>
                         <option value="OLVA">OLVA</option>
                     </select>
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label htmlFor="billeteras" className="text-xs text-muted-foreground">
+                        BILLETERAS
+                    </Label>
+                    <Input
+                        id="billeteras"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={data.billeteras}
+                        onChange={(e) => handleChange("billeteras", e.target.value)}
+                    />
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label htmlFor="transferencia" className="text-xs text-muted-foreground">
+                        TRANSFERENCIA
+                    </Label>
+                    <Input
+                        id="transferencia"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={data.transferencia}
+                        onChange={(e) => handleChange("transferencia", e.target.value)}
+                    />
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label htmlFor="cash" className="text-xs text-muted-foreground">
+                        CASH
+                    </Label>
+                    <Input
+                        id="cash"
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={data.cash}
+                        onChange={(e) => handleChange("cash", e.target.value)}
+                    />
                 </div>
 
                 {/* Banco */}

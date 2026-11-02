@@ -33,10 +33,12 @@ const createInitialPaymentData = (): PaymentData => ({
   olva: "",
   frank: "",
   vendedor: "",
-  numero: "",
   precioFinal: "",
   envio: "",
   accesorio: "",
+  billeteras: "",
+  transferencia: "",
+  cash: "",
   banco: "",
   total: "",
   titular: "",
@@ -111,10 +113,12 @@ const Factura = () => {
         olva: optionalAmount(paymentData.olva),
         frank: optionalAmount(paymentData.frank),
         vendedor: paymentData.vendedor || null,
-        numero: optionalAmount(paymentData.numero),
         precio_final: optionalAmount(paymentData.precioFinal),
         envio: optionalAmount(paymentData.envio),
         accesorio: optionalAmount(paymentData.accesorio),
+        billeteras: optionalAmount(paymentData.billeteras),
+        transferencia: optionalAmount(paymentData.transferencia),
+        cash: optionalAmount(paymentData.cash),
         banco: paymentData.banco?.trim() || null,
         titular: paymentData.titular?.trim() || null,
         total: paymentData.total?.trim() || null,
@@ -283,7 +287,6 @@ const Factura = () => {
                 data={paymentData}
                 onChange={setPaymentData}
                 customerData={customerData}
-                invoiceDate={invoiceDate}
               />
             </div>
 
