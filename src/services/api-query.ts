@@ -33,6 +33,7 @@ export interface CustomerInvoice {
   invoice_date: string;
   customer_number: string;
   created_at: string;
+  has_iphone: boolean;
 }
 
 export interface InvoicePdfResult {
@@ -295,12 +296,13 @@ class ApiServiceClass {
     return (payload.data ?? []) as CustomerInvoice[];
   }
 
-  async getInvoicePdf(invoiceId: number): Promise<Blob> {
+  async getInvoicePdf(invoiceId: number, includeImei = false): Promise<Blob> {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) {
       throw new Error("No hay sesión activa. Por favor, inicia sesión.");
     }
-    const response = await fetch(`${API_URL}/api/invoices/${invoiceId}/pdf`, {
+    const params = new URLSearchParams({ include_imei: String(includeImei) });
+    const response = await fetch(`${API_URL}/api/invoices/${invoiceId}/pdf?${params}`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (!response.ok) {
@@ -536,10 +538,10 @@ export function useCustomerInvoices(
  * Hook para regenerar y abrir el PDF de una factura existente
  */
 export function useOpenInvoicePdf(
-  options?: UseMutationOptions<Blob, Error, number>
+  options?: UseMutationOptions<Blob, Error, { invoiceId: number; includeImei: boolean }>
 ) {
   return useMutation({
-    mutationFn: (invoiceId: number) => apiService.getInvoicePdf(invoiceId),
+    mutationFn: ({ invoiceId, includeImei }) => apiService.getInvoicePdf(invoiceId, includeImei),
     onSuccess: (blob) => {
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
