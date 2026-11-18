@@ -34,7 +34,8 @@ function InvoicesModal({
   onClose: () => void;
 }) {
   const { data: invoices, isLoading, isError } = useCustomerInvoices(customerId);
-  const { mutate: openPdf, isPending } = useOpenInvoicePdf();
+  const { mutate: openPdf, isPending, error: pdfError } = useOpenInvoicePdf();
+  const [includeImeiByInvoice, setIncludeImeiByInvoice] = useState<Record<number, boolean>>({});
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -77,21 +78,46 @@ function InvoicesModal({
                       {inv.invoice_date}
                     </p>
                   </div>
-                  <button
-                    onClick={() => openPdf(inv.id)}
-                    disabled={isPending}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isPending ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <FileText className="h-3 w-3" />
-                    )}
-                    Ver PDF
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <label className={`inline-flex items-center gap-1.5 text-xs ${
+                      inv.has_iphone ? "text-foreground" : "text-muted-foreground opacity-50"
+                    }`}>
+                      <input
+                        type="checkbox"
+                        checked={includeImeiByInvoice[inv.id] ?? false}
+                        disabled={!inv.has_iphone}
+                        onChange={(event) => setIncludeImeiByInvoice((current) => ({
+                          ...current,
+                          [inv.id]: event.target.checked,
+                        }))}
+                        className="h-4 w-4 accent-primary disabled:cursor-not-allowed"
+                      />
+                      Generar IMEI
+                    </label>
+                    <button
+                      onClick={() => openPdf({
+                        invoiceId: inv.id,
+                        includeImei: includeImeiByInvoice[inv.id] ?? false,
+                      })}
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <FileText className="h-3 w-3" />
+                      )}
+                      Ver PDF
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
+          )}
+          {pdfError && (
+            <p role="alert" className="mt-3 text-sm text-destructive">
+              {pdfError.message}
+            </p>
           )}
         </div>
       </DialogContent>
