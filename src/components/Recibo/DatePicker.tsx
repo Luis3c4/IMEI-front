@@ -29,7 +29,7 @@ export const DatePickerCard = ({ date, onDateChange }: DatePickerProps) => {
       <div className="flex items-center gap-2">
         <CalendarDays className="w-5 h-5 text-primary" />
         <h3 className="text-sm font-medium text-foreground">
-          Fecha de la cotización
+          Fecha de la factura
         </h3>
       </div>
       {/* Trigger */}
@@ -39,7 +39,7 @@ export const DatePickerCard = ({ date, onDateChange }: DatePickerProps) => {
         className="flex items-center justify-between w-full rounded-xl border border-border bg-muted/40 hover:bg-muted/70 transition-colors px-4 py-2.5 text-sm"
       >
         <span className="font-medium text-foreground">
-          {format(date, "dd/MM/yyyy")}
+          {format(date, "d 'de' MMMM 'de' yyyy", { locale: es })}
         </span>
         <span className="text-xs text-muted-foreground">
           {open ? "Cerrar" : "Cambiar fecha"}
@@ -60,7 +60,6 @@ export const DatePickerCard = ({ date, onDateChange }: DatePickerProps) => {
             locale={es}
             captionLayout="dropdown"
             className="p-0!"
-            classNames={{ caption_label: "hidden" }}
           />
         </div>
       )}
