@@ -32,7 +32,7 @@ const createInitialPaymentData = (): PaymentData => ({
   agencia: "OFICINA",
   olva: "",
   frank: "",
-  vendedor: "",
+  vendedor: "Roger",
   precioFinal: "",
   envio: "",
   accesorio: "",
